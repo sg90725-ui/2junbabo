@@ -1981,6 +1981,7 @@ class InfiniteMathStairsGame {
     this.activeFetchStartTime = 0;
     this.activeFetchController = null;
     this.legacyRankingFetched = false;
+    this.firebaseDbUrl = 'https://junbabo-fcc55-default-rtdb.firebaseio.com';
     this.rankingEndpoint = 'https://ntfy.sh/2junbabo_math_stairs_rank_2026_v2';
     this.legacyRankingEndpoint = 'https://ntfy.sh/2junbabo_math_stairs_rank_2026_v1';
 
@@ -2443,13 +2444,20 @@ class InfiniteMathStairsGame {
     });
   }
 
-  // ==================== 닉네임 & 실시간 랭킹 시스템 ====================
+  // ==================== 닉네임 & 실시간 랭킹 시스템 (Firebase Realtime DB 연동) ====================
   normalizeNickname(raw) {
     return String(raw || '')
       .normalize('NFC')
       .replace(/[\u200B-\u200D\uFEFF]/g, '')
       .trim()
       .slice(0, 12);
+  }
+
+  toFirebaseKey(nick) {
+    const clean = this.normalizeNickname(nick);
+    if (!clean) return '';
+    // Firebase Realtime DB 키 금지 문자(. $ # [ ] / 및 제어문자)를 안전하게 치환
+    return clean.replace(/[.$#[\]/\x00-\x1F\x7F]/g, '_');
   }
 
   loadLocalRankings() {
@@ -2604,7 +2612,6 @@ class InfiniteMathStairsGame {
     this.saveLocalRankings();
     this.renderRankingBoards();
 
-    // 계단 오르는 도중 매 스텝마다 네트워크 요청이 폭주(429 차단/스톨)하지 않도록 pushOnline이 명시된 시점에만 전송
     if (pushOnline) {
       this.postScoreOnline(this.rankingsMap[cleanNick], true);
     }
@@ -2613,90 +2620,61 @@ class InfiniteMathStairsGame {
   async postScoreOnline(entry, force = false) {
     if (!entry || !entry.nick) return false;
     const cleanNick = this.normalizeNickname(entry.nick);
-    if (!cleanNick) return false;
+    const fbKey = this.toFirebaseKey(cleanNick);
+    if (!cleanNick || !fbKey) return false;
 
-    const stair = Math.max(0, Math.floor(Number(entry.stair) || 0));
-    const iq = Math.max(0, Math.floor(Number(entry.iq) || 0));
+    const serverPrev = this.onlineServerMap[cleanNick];
+    const stair = Math.max(
+      serverPrev?.stair || 0,
+      Math.max(0, Math.floor(Number(entry.stair) || 0))
+    );
+    const iq = Math.max(
+      serverPrev?.iq || 0,
+      Math.max(0, Math.floor(Number(entry.iq) || 0))
+    );
     if (stair <= 0 && !force) return false;
 
-    // 현재 클라이언트가 보유한 상위 35명 랭킹 스냅샷을 함께 동봉하여 특정 사용자 누락 및 12시간 캐시 만료 방지
-    const topSnapshot = this.getSortedRankings()
-      .filter((r) => r && r.nick && (r.stair > 0 || r.nick === cleanNick))
-      .slice(0, 35)
-      .map((r) => [
-        this.normalizeNickname(r.nick),
-        Math.max(0, Math.floor(Number(r.stair) || 0)),
-        Math.max(0, Math.floor(Number(r.iq) || 0))
-      ]);
-
-    const postKey = `${cleanNick}:${stair}:${iq}:${topSnapshot.length}`;
+    const postKey = `${cleanNick}:${stair}:${iq}`;
     if (!force && this.lastPostedKey === postKey) return true;
 
-    const payload = JSON.stringify({
-      t: 'rank',
+    const recordPayload = {
       nick: cleanNick,
       stair,
       iq,
-      ts: entry.updatedAt || Date.now(),
-      top: topSnapshot
-    });
+      updatedAt: entry.updatedAt || Date.now()
+    };
 
-    const postToUrl = async (url) => {
+    // 1) Firebase Realtime Database에 단일 유저 레코드 저장 (PUT /rankings/{fbKey}.json)
+    if (this.firebaseDbUrl) {
       const controller = new AbortController();
       const timer = setTimeout(() => {
         try {
           controller.abort();
         } catch (_) {}
-      }, 4000);
+      }, 4500);
       try {
-        const res = await fetch(url, {
-          method: 'POST',
+        const fbUrl = `${this.firebaseDbUrl}/rankings/${encodeURIComponent(fbKey)}.json`;
+        const res = await fetch(fbUrl, {
+          method: 'PUT',
           headers: {
-            'Content-Type': 'text/plain;charset=UTF-8'
+            'Content-Type': 'application/json;charset=UTF-8'
           },
           cache: 'no-store',
           keepalive: true,
           signal: controller.signal,
-          body: payload
+          body: JSON.stringify(recordPayload)
         });
         clearTimeout(timer);
-        return Boolean(res && res.ok);
+        if (res && res.ok) {
+          this.lastPostedKey = postKey;
+          this.hasUnsyncedBest = false;
+          this.lastPostTime = Date.now();
+          this.onlineServerMap[cleanNick] = recordPayload;
+          this.rankingsMap[cleanNick] = recordPayload;
+          return true;
+        }
       } catch (_) {
         clearTimeout(timer);
-        return false;
-      }
-    };
-
-    const okPrimary = await postToUrl(this.rankingEndpoint);
-    if (okPrimary) {
-      this.lastPostedKey = postKey;
-      this.hasUnsyncedBest = false;
-      this.lastPostTime = Date.now();
-      this.onlineServerMap[cleanNick] = {
-        nick: cleanNick,
-        stair: Math.max(this.onlineServerMap[cleanNick]?.stair || 0, stair),
-        iq: Math.max(this.onlineServerMap[cleanNick]?.iq || 0, iq),
-        updatedAt: entry.updatedAt || Date.now()
-      };
-      if (this.legacyRankingEndpoint) {
-        postToUrl(this.legacyRankingEndpoint);
-      }
-      return true;
-    }
-
-    if (this.legacyRankingEndpoint) {
-      const okLegacy = await postToUrl(this.legacyRankingEndpoint);
-      if (okLegacy) {
-        this.lastPostedKey = postKey;
-        this.hasUnsyncedBest = false;
-        this.lastPostTime = Date.now();
-        this.onlineServerMap[cleanNick] = {
-          nick: cleanNick,
-          stair: Math.max(this.onlineServerMap[cleanNick]?.stair || 0, stair),
-          iq: Math.max(this.onlineServerMap[cleanNick]?.iq || 0, iq),
-          updatedAt: entry.updatedAt || Date.now()
-        };
-        return true;
       }
     }
 
@@ -2797,8 +2775,36 @@ class InfiniteMathStairsGame {
     return parsedCount;
   }
 
+  async fetchJsonWithTimeout(url, timeoutMs = 4500) {
+    const controller = new AbortController();
+    this.activeFetchController = controller;
+    const timer = setTimeout(() => {
+      try {
+        controller.abort();
+      } catch (_) {}
+    }, timeoutMs);
+    try {
+      const res = await fetch(url, {
+        method: 'GET',
+        cache: 'no-store',
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (!res) return { ok: false, status: 0, data: null };
+      if (!res.ok) return { ok: false, status: res.status, data: null };
+      const data = await res.json();
+      return { ok: true, status: res.status, data };
+    } catch (_) {
+      clearTimeout(timer);
+      try {
+        controller.abort();
+      } catch (_) {}
+      return { ok: false, status: 0, data: null };
+    }
+  }
+
   // 스트림이 닫히지 않거나 네트워크 지연 시에도 '갱신중'에서 절대 멈추지 않도록 타임아웃 + 유휴(idle) 청크 리더 적용
-  async fetchNdjsonWithTimeout(url, totalTimeoutMs = 4200, idleTimeoutMs = 650) {
+  async fetchNdjsonWithTimeout(url, totalTimeoutMs = 3500, idleTimeoutMs = 550) {
     const controller = new AbortController();
     this.activeFetchController = controller;
     let totalTimer = null;
@@ -2941,7 +2947,6 @@ class InfiniteMathStairsGame {
       }
     };
 
-    // 이미 진행 중인 요청이 있을 때: 오래 걸렸으면 중단 후 재시작하고, 방금 시작된 요청이면 결과를 함께 공유
     if (this.activeFetchPromise) {
       if (showFeedback) {
         setRefreshingUI();
@@ -2968,81 +2973,159 @@ class InfiniteMathStairsGame {
 
     const runFetch = async () => {
       let anySuccess = false;
-      const v2ServerMap = {};
+      let fbPermissionDenied = false;
 
       try {
         const cacheBuster = Date.now();
-        // 1) 신규 클린 채널(v2) 조회
-        const resV2 = await this.fetchNdjsonWithTimeout(
-          `${this.rankingEndpoint}/json?poll=1&since=all&_t=${cacheBuster}`,
-          4000,
-          650
+        // 1) Firebase Realtime Database에서 전체 랭킹 조회 (단일 진실 공급원)
+        const fbRes = await this.fetchJsonWithTimeout(
+          `${this.firebaseDbUrl}/rankings.json?_t=${cacheBuster}`,
+          4500
         );
-        if (resV2.ok) {
+
+        if (fbRes.status === 401 || fbRes.status === 403) {
+          fbPermissionDenied = true;
+          console.warn(
+            '[랭킹] Firebase Realtime Database가 잠금 모드(권한 거부)입니다. Firebase 콘솔 > 규칙(Rules)에서 rankings 읽기/쓰기를 허용해주세요.'
+          );
+        }
+
+        if (fbRes.ok) {
           anySuccess = true;
-          this.parseNdjsonRankingText(resV2.text, v2ServerMap);
-        }
-
-        // 2) 기존 채널(v1) 기록도 첫 동기화 시 또는 v2에 기록이 적을 때 병합하여 기존 도전자 전원 보존
-        const needLegacyCheck =
-          !this.legacyRankingFetched || Object.keys(v2ServerMap).length < 2 || !resV2.ok;
-        if (needLegacyCheck && this.legacyRankingEndpoint) {
-          const resV1 = await this.fetchNdjsonWithTimeout(
-            `${this.legacyRankingEndpoint}/json?poll=1&since=all&_t=${cacheBuster}`,
-            3500,
-            600
-          );
-          if (resV1.ok) {
-            anySuccess = true;
-            this.legacyRankingFetched = true;
-            this.parseNdjsonRankingText(resV1.text, null);
-          }
-        }
-
-        // 3) 내 로컬 최고 기록과 온라인 서버 기록 양방향 동기화 (서버에 내 기록이 없거나 낮으면 즉시 재전송!)
-        if (this.nickname) {
-          const myLocalRec = this.rankingsMap[this.nickname];
-          const myOnlineRec = this.onlineServerMap[this.nickname];
-          const myV2Rec = v2ServerMap[this.nickname];
-
-          if (
-            myOnlineRec &&
-            (myOnlineRec.stair > this.bestStair ||
-              (myOnlineRec.stair === this.bestStair && myOnlineRec.iq > this.bestIQ))
-          ) {
-            this.bestStair = Math.max(this.bestStair, myOnlineRec.stair);
-            this.bestIQ = Math.max(this.bestIQ, myOnlineRec.iq);
-            localStorage.setItem('2jun_best_stair', String(this.bestStair));
-            localStorage.setItem('2jun_best_iq', String(this.bestIQ));
-            if (this.elBestCount) this.elBestCount.textContent = this.bestStair;
+          const firebaseMap = {};
+          const rawData = fbRes.data;
+          if (rawData && typeof rawData === 'object') {
+            Object.entries(rawData).forEach(([key, item]) => {
+              if (!item || typeof item !== 'object') return;
+              const cNick = this.normalizeNickname(item.nick || key);
+              if (!cNick) return;
+              const s = Math.max(0, Math.floor(Number(item.stair) || 0));
+              const q = Math.max(0, Math.floor(Number(item.iq) || 0));
+              const ts = Number(item.updatedAt) || Date.now();
+              const prev = firebaseMap[cNick];
+              if (!prev || s > prev.stair || (s === prev.stair && q > prev.iq)) {
+                firebaseMap[cNick] = {
+                  nick: cNick,
+                  stair: Math.max(prev?.stair || 0, s),
+                  iq: Math.max(prev?.iq || 0, q),
+                  updatedAt: ts
+                };
+              }
+            });
           }
 
-          if (myLocalRec) {
-            myLocalRec.stair = Math.max(myLocalRec.stair || 0, this.bestStair);
-            myLocalRec.iq = Math.max(myLocalRec.iq || 0, this.bestIQ);
+          // 2) 최초 1회(또는 Firebase DB가 비어있을 때) 기존 로컬/ntfy 기록을 Firebase로 자동 이관하여 기존 도전자 기록 완벽 보존
+          const alreadyMigrated = localStorage.getItem('2jun_fb_migrated_v1') === '1';
+          if (!alreadyMigrated || Object.keys(firebaseMap).length === 0) {
+            if (Object.keys(firebaseMap).length < 2 && !this.legacyRankingFetched) {
+              this.legacyRankingFetched = true;
+              const [resV2, resV1] = await Promise.all([
+                this.fetchNdjsonWithTimeout(
+                  `${this.rankingEndpoint}/json?poll=1&since=all&_t=${cacheBuster}`,
+                  2800,
+                  450
+                ),
+                this.fetchNdjsonWithTimeout(
+                  `${this.legacyRankingEndpoint}/json?poll=1&since=all&_t=${cacheBuster}`,
+                  2800,
+                  450
+                )
+              ]);
+              if (resV2.ok) this.parseNdjsonRankingText(resV2.text, null);
+              if (resV1.ok) this.parseNdjsonRankingText(resV1.text, null);
+            }
+
+            const patchPayload = {};
+            Object.values(this.rankingsMap).forEach((localItem) => {
+              if (!localItem || !localItem.nick) return;
+              const cNick = this.normalizeNickname(localItem.nick);
+              const fbKey = this.toFirebaseKey(cNick);
+              if (!cNick || !fbKey) return;
+              const lStair = Math.max(0, Math.floor(Number(localItem.stair) || 0));
+              const lIQ = Math.max(0, Math.floor(Number(localItem.iq) || 0));
+              if (lStair <= 0 && cNick !== this.nickname) return;
+
+              const fbExisting = firebaseMap[cNick];
+              if (
+                !fbExisting ||
+                lStair > fbExisting.stair ||
+                (lStair === fbExisting.stair && lIQ > fbExisting.iq)
+              ) {
+                const mergedRec = {
+                  nick: cNick,
+                  stair: Math.max(fbExisting?.stair || 0, lStair),
+                  iq: Math.max(fbExisting?.iq || 0, lIQ),
+                  updatedAt: localItem.updatedAt || Date.now()
+                };
+                patchPayload[fbKey] = mergedRec;
+                firebaseMap[cNick] = mergedRec;
+              }
+            });
+
+            if (Object.keys(patchPayload).length > 0) {
+              try {
+                const patchRes = await fetch(`${this.firebaseDbUrl}/rankings.json`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+                  cache: 'no-store',
+                  body: JSON.stringify(patchPayload)
+                });
+                if (patchRes && patchRes.ok) {
+                  localStorage.setItem('2jun_fb_migrated_v1', '1');
+                }
+              } catch (_) {}
+            } else {
+              localStorage.setItem('2jun_fb_migrated_v1', '1');
+            }
           }
 
-          const isMissingOrHigherThanV2 =
-            !myV2Rec ||
-            this.bestStair > (myV2Rec.stair || 0) ||
-            (this.bestStair === (myV2Rec.stair || 0) && this.bestIQ > (myV2Rec.iq || 0));
+          // 3) 내 로컬 최고 기록과 Firebase 서버 기록 양방향 동기화
+          if (this.nickname) {
+            const myFbRec = firebaseMap[this.nickname];
+            if (
+              myFbRec &&
+              (myFbRec.stair > this.bestStair ||
+                (myFbRec.stair === this.bestStair && myFbRec.iq > this.bestIQ))
+            ) {
+              this.bestStair = Math.max(this.bestStair, myFbRec.stair);
+              this.bestIQ = Math.max(this.bestIQ, myFbRec.iq);
+              localStorage.setItem('2jun_best_stair', String(this.bestStair));
+              localStorage.setItem('2jun_best_iq', String(this.bestIQ));
+              if (this.elBestCount) this.elBestCount.textContent = this.bestStair;
+            }
 
-          const hasOtherUnsyncedRecordsForV2 = Object.values(this.rankingsMap).some(
-            (r) =>
-              r &&
-              r.nick &&
-              r.stair > 0 &&
-              (!v2ServerMap[r.nick] || r.stair > (v2ServerMap[r.nick].stair || 0))
-          );
+            const isMyLocalHigherOrMissing =
+              !myFbRec ||
+              this.bestStair > (myFbRec.stair || 0) ||
+              (this.bestStair === (myFbRec.stair || 0) && this.bestIQ > (myFbRec.iq || 0));
 
-          if (
-            myLocalRec &&
-            (this.hasUnsyncedBest ||
-              (isMissingOrHigherThanV2 && (this.bestStair > 0 || showFeedback)) ||
-              hasOtherUnsyncedRecordsForV2)
-          ) {
-            const posted = await this.postScoreOnline(myLocalRec, true);
-            if (posted) anySuccess = true;
+            if (
+              this.hasUnsyncedBest ||
+              (isMyLocalHigherOrMissing && (this.bestStair > 0 || showFeedback))
+            ) {
+              const myEntry = {
+                nick: this.nickname,
+                stair: this.bestStair,
+                iq: this.bestIQ,
+                updatedAt: Date.now()
+              };
+              const posted = await this.postScoreOnline(myEntry, true);
+              if (posted) {
+                firebaseMap[this.nickname] = myEntry;
+              }
+            }
+          }
+
+          // 4) 모든 사용자가 100% 동일한 랭킹을 보도록 Firebase 데이터를 기준으로 rankingsMap 교체
+          this.onlineServerMap = { ...firebaseMap };
+          this.rankingsMap = { ...firebaseMap };
+          if (this.nickname && !this.rankingsMap[this.nickname]) {
+            this.rankingsMap[this.nickname] = {
+              nick: this.nickname,
+              stair: this.bestStair,
+              iq: this.bestIQ,
+              updatedAt: Date.now()
+            };
           }
         }
 
@@ -3054,6 +3137,9 @@ class InfiniteMathStairsGame {
           if (anySuccess) {
             syncBadge.textContent = '실시간 연동됨';
             syncBadge.classList.remove('offline');
+          } else if (fbPermissionDenied) {
+            syncBadge.textContent = 'DB 잠금해제 필요';
+            syncBadge.classList.add('offline');
           } else {
             syncBadge.textContent = '로컬 저장됨';
             syncBadge.classList.add('offline');
