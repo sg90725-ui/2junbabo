@@ -1985,6 +1985,11 @@ class InfiniteMathStairsGame {
     this.rankingEndpoint = 'https://ntfy.sh/2junbabo_math_stairs_rank_2026_v2';
     this.legacyRankingEndpoint = 'https://ntfy.sh/2junbabo_math_stairs_rank_2026_v1';
 
+    this.hasUnsyncedItems = false;
+    this.lastLocalItemMutationTime = 0;
+    this.localDataUpdatedAt = 0;
+    this.activeItemSyncPromise = null;
+
     const savedInterval = Number(localStorage.getItem('2jun_quiz_interval_v2') || 20);
     this.quizInterval = Math.min(999, Math.max(1, savedInterval || 20));
 
@@ -2089,7 +2094,7 @@ class InfiniteMathStairsGame {
   }
 
   loadPersistentData() {
-    this.coins = Number(localStorage.getItem('2jun_coins') || 0);
+    this.coins = Math.max(0, Math.floor(Number(localStorage.getItem('2jun_coins') || 0)));
     let savedInv = null;
     try {
       savedInv = JSON.parse(localStorage.getItem('2jun_inventory_v1') || 'null');
@@ -2111,7 +2116,7 @@ class InfiniteMathStairsGame {
       einstein_capsule: 0,
       ...(savedInv?.counts || {})
     };
-    this.unlockedCosmetics = savedInv?.unlocked || {};
+    this.unlockedCosmetics = { ...(savedInv?.unlocked || {}) };
     this.equipped = {
       shoe: null,
       wing: null,
@@ -2125,18 +2130,346 @@ class InfiniteMathStairsGame {
       this.equipped.wing = 'wing_gold';
       this.equipped.accessory = null;
     }
+    // 현재 장착 중인 모든 아이템은 해금(보유) 목록에도 반드시 포함되도록 보장
+    Object.values(this.equipped).forEach((itemId) => {
+      if (itemId) {
+        this.unlockedCosmetics[itemId] = true;
+      }
+    });
+    this.localDataUpdatedAt = Number(savedInv?.updatedAt) || 0;
+  }
+
+  saveLocalCacheOnly() {
+    try {
+      localStorage.setItem('2jun_coins', String(this.coins));
+      localStorage.setItem('2jun_quiz_interval_v2', String(this.quizInterval));
+      localStorage.setItem(
+        '2jun_inventory_v1',
+        JSON.stringify({
+          counts: this.inventory,
+          unlocked: this.unlockedCosmetics,
+          equipped: this.equipped,
+          updatedAt: this.localDataUpdatedAt || Date.now()
+        })
+      );
+    } catch (_) {}
   }
 
   savePersistentData() {
-    localStorage.setItem('2jun_coins', String(this.coins));
-    localStorage.setItem(
-      '2jun_inventory_v1',
-      JSON.stringify({
-        counts: this.inventory,
-        unlocked: this.unlockedCosmetics,
-        equipped: this.equipped
+    // 장착 중인 아이템은 해금 목록에도 자동 반영
+    Object.values(this.equipped || {}).forEach((itemId) => {
+      if (itemId) {
+        this.unlockedCosmetics[itemId] = true;
+      }
+    });
+    const now = Date.now();
+    this.lastLocalItemMutationTime = now;
+    this.localDataUpdatedAt = now;
+    this.hasUnsyncedItems = true;
+    this.saveLocalCacheOnly();
+    // 모든 아이템·장착·코인 변경사항을 즉시 Firebase Realtime DB로 저장
+    this.pushPersistentDataToFirebase(false);
+  }
+
+  hasLocalPersistentAssets() {
+    if ((Number(this.coins) || 0) > 0) return true;
+    if (Object.values(this.inventory || {}).some((v) => (Number(v) || 0) > 0)) return true;
+    if (Object.keys(this.unlockedCosmetics || {}).some((k) => Boolean(this.unlockedCosmetics[k]))) return true;
+    if (Object.values(this.equipped || {}).some((v) => Boolean(v))) return true;
+    return false;
+  }
+
+  buildPersistentPayload() {
+    const unlocked = {};
+    Object.keys(this.unlockedCosmetics || {}).forEach((k) => {
+      if (this.unlockedCosmetics[k]) unlocked[k] = true;
+    });
+    Object.values(this.equipped || {}).forEach((itemId) => {
+      if (itemId) unlocked[itemId] = true;
+    });
+
+    const defaultKeys = [
+      'time_ext',
+      'slow_stamina',
+      'math_hint',
+      'extra_life',
+      'double_coin',
+      'iq_booster',
+      'direction_guide',
+      'rocket_boost',
+      'fever_jackpot',
+      'quiz_pass',
+      'einstein_capsule'
+    ];
+    const counts = {};
+    defaultKeys.forEach((k) => {
+      counts[k] = Math.max(0, Math.floor(Number(this.inventory?.[k]) || 0));
+    });
+    Object.keys(this.inventory || {}).forEach((k) => {
+      counts[k] = Math.max(0, Math.floor(Number(this.inventory[k]) || 0));
+    });
+
+    const equipped = {
+      shoe: this.equipped?.shoe || null,
+      wing: this.equipped?.wing || null,
+      accessory: this.equipped?.accessory || null,
+      hand: this.equipped?.hand || null,
+      pet: this.equipped?.pet || null,
+      stair: this.equipped?.stair || null
+    };
+    if (equipped.accessory === 'wing_gold') {
+      equipped.wing = 'wing_gold';
+      equipped.accessory = null;
+    }
+
+    return {
+      isPlayerData: true,
+      coins: Math.max(0, Math.floor(Number(this.coins) || 0)),
+      counts,
+      unlocked,
+      equipped,
+      quizInterval: Math.min(999, Math.max(1, Math.floor(Number(this.quizInterval) || 20))),
+      nickname: this.nickname || '',
+      updatedAt: this.localDataUpdatedAt || Date.now()
+    };
+  }
+
+  applyRemotePersistentData(remoteData, mergeLocalForFirstMigration = false) {
+    if (!remoteData || typeof remoteData !== 'object') return false;
+
+    const remoteCoins = Math.max(0, Math.floor(Number(remoteData.coins) || 0));
+    const remoteCounts = remoteData.counts && typeof remoteData.counts === 'object' ? remoteData.counts : {};
+    const remoteUnlocked = remoteData.unlocked && typeof remoteData.unlocked === 'object' ? remoteData.unlocked : {};
+    const remoteEquipped = remoteData.equipped && typeof remoteData.equipped === 'object' ? remoteData.equipped : {};
+
+    if (mergeLocalForFirstMigration) {
+      // 최초 1회 마이그레이션: 현재 브라우저에서 보유/장착 중인 아이템과 코인을 우선 보존하며 DB 데이터와 병합
+      this.coins = Math.max(remoteCoins, Math.max(0, Math.floor(Number(this.coins) || 0)));
+
+      const mergedCounts = { ...this.inventory };
+      Object.keys({ ...mergedCounts, ...remoteCounts }).forEach((k) => {
+        mergedCounts[k] = Math.max(
+          Math.max(0, Math.floor(Number(remoteCounts[k]) || 0)),
+          Math.max(0, Math.floor(Number(this.inventory?.[k]) || 0))
+        );
+      });
+      this.inventory = mergedCounts;
+
+      const mergedUnlocked = { ...remoteUnlocked, ...(this.unlockedCosmetics || {}) };
+      const slots = ['shoe', 'wing', 'accessory', 'hand', 'pet', 'stair'];
+      const mergedEquipped = {};
+      slots.forEach((slot) => {
+        mergedEquipped[slot] = this.equipped?.[slot] || remoteEquipped[slot] || null;
+        if (mergedEquipped[slot]) {
+          mergedUnlocked[mergedEquipped[slot]] = true;
+        }
+      });
+      if (mergedEquipped.accessory === 'wing_gold') {
+        mergedEquipped.wing = 'wing_gold';
+        mergedEquipped.accessory = null;
+      }
+      this.equipped = mergedEquipped;
+      this.unlockedCosmetics = mergedUnlocked;
+    } else {
+      // 일반 동기화: Firebase DB의 최신 코인·인벤토리·장착 상태를 그대로 반영 (영구 해금 코스메틱은 합집합 유지)
+      this.coins = remoteCoins;
+
+      const defaultKeys = [
+        'time_ext',
+        'slow_stamina',
+        'math_hint',
+        'extra_life',
+        'double_coin',
+        'iq_booster',
+        'direction_guide',
+        'rocket_boost',
+        'fever_jackpot',
+        'quiz_pass',
+        'einstein_capsule'
+      ];
+      const nextCounts = {};
+      defaultKeys.forEach((k) => {
+        nextCounts[k] = Math.max(0, Math.floor(Number(remoteCounts[k]) || 0));
+      });
+      Object.keys(remoteCounts).forEach((k) => {
+        nextCounts[k] = Math.max(0, Math.floor(Number(remoteCounts[k]) || 0));
+      });
+      this.inventory = nextCounts;
+
+      const nextUnlocked = { ...(this.unlockedCosmetics || {}), ...remoteUnlocked };
+      const nextEquipped = {
+        shoe: remoteEquipped.shoe || null,
+        wing: remoteEquipped.wing || null,
+        accessory: remoteEquipped.accessory || null,
+        hand: remoteEquipped.hand || null,
+        pet: remoteEquipped.pet || null,
+        stair: remoteEquipped.stair || null
+      };
+      if (nextEquipped.accessory === 'wing_gold') {
+        nextEquipped.wing = 'wing_gold';
+        nextEquipped.accessory = null;
+      }
+      Object.values(nextEquipped).forEach((itemId) => {
+        if (itemId) nextUnlocked[itemId] = true;
+      });
+      this.equipped = nextEquipped;
+      this.unlockedCosmetics = nextUnlocked;
+
+      if (remoteData.quizInterval) {
+        this.quizInterval = Math.min(999, Math.max(1, Math.floor(Number(remoteData.quizInterval) || 20)));
+        this.syncIntervalLabels();
+      }
+    }
+
+    this.iqBoosterActive = (this.inventory.iq_booster || 0) > 0;
+    this.localDataUpdatedAt = Number(remoteData.updatedAt) || Date.now();
+    this.saveLocalCacheOnly();
+
+    if (this.elStairCount) {
+      this.updateHUD();
+    }
+    if (this.elShopModal?.classList.contains('active')) {
+      this.renderShopItems();
+    }
+    if (this.state === 'QUIZ') {
+      this.updateQuizItemButtons();
+    }
+    return true;
+  }
+
+  async pushPersistentDataToFirebase(isMigration = false) {
+    if (!this.firebaseDbUrl) return false;
+    const payload = this.buildPersistentPayload();
+    const bodyStr = JSON.stringify(payload);
+
+    // Firebase 규칙이 루트(/playerData) 또는 /rankings 하위에 설정된 경우 모두 100% 동작하도록 양쪽에 저장
+    const urls = [
+      `${this.firebaseDbUrl}/playerData.json`,
+      `${this.firebaseDbUrl}/rankings/__player_data__.json`
+    ];
+
+    let anyOk = false;
+    await Promise.all(
+      urls.map(async (url) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => {
+          try {
+            controller.abort();
+          } catch (_) {}
+        }, 4500);
+        try {
+          const res = await fetch(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+            cache: 'no-store',
+            keepalive: true,
+            signal: controller.signal,
+            body: bodyStr
+          });
+          clearTimeout(timer);
+          if (res && res.ok) {
+            anyOk = true;
+          }
+        } catch (_) {
+          clearTimeout(timer);
+        }
       })
     );
+
+    if (anyOk) {
+      if (this.localDataUpdatedAt <= payload.updatedAt) {
+        this.hasUnsyncedItems = false;
+      }
+      if (isMigration) {
+        try {
+          localStorage.setItem('2jun_fb_items_migrated_v1', '1');
+        } catch (_) {}
+      }
+    }
+    return anyOk;
+  }
+
+  async fetchRemotePersistentDataFromFirebase() {
+    if (!this.firebaseDbUrl) return { reachable: false, data: null };
+    const cacheBuster = Date.now();
+    const [resPrimary, resFallback] = await Promise.all([
+      this.fetchJsonWithTimeout(`${this.firebaseDbUrl}/playerData.json?_t=${cacheBuster}`, 4000),
+      this.fetchJsonWithTimeout(`${this.firebaseDbUrl}/rankings/__player_data__.json?_t=${cacheBuster}`, 4000)
+    ]);
+
+    const reachable = Boolean(resPrimary.ok || resFallback.ok);
+    const d1 = resPrimary.ok && resPrimary.data && typeof resPrimary.data === 'object' ? resPrimary.data : null;
+    const d2 = resFallback.ok && resFallback.data && typeof resFallback.data === 'object' ? resFallback.data : null;
+
+    if (d1 && d2) {
+      return {
+        reachable,
+        data: (Number(d1.updatedAt) || 0) >= (Number(d2.updatedAt) || 0) ? d1 : d2
+      };
+    }
+    return { reachable, data: d1 || d2 || null };
+  }
+
+  async syncPersistentDataWithFirebase() {
+    if (this.activeItemSyncPromise) {
+      return this.activeItemSyncPromise;
+    }
+
+    const runSync = async () => {
+      const syncStartTime = Date.now();
+      const alreadyMigrated = localStorage.getItem('2jun_fb_items_migrated_v1') === '1';
+      const hasLocalAssets = this.hasLocalPersistentAssets();
+
+      const { reachable, data: remoteData } = await this.fetchRemotePersistentDataFromFirebase();
+
+      // 1) 최초 1회 마이그레이션: 현재 브라우저의 장착 아이템·구매 아이템·코인을 DB로 전송하여 갱신
+      if (!alreadyMigrated) {
+        if (hasLocalAssets) {
+          if (remoteData) {
+            this.applyRemotePersistentData(remoteData, true);
+          }
+          this.localDataUpdatedAt = Date.now();
+          this.saveLocalCacheOnly();
+          await this.pushPersistentDataToFirebase(true);
+          return;
+        } else if (remoteData) {
+          // 다른(새) 브라우저여서 로컬 아이템/코인이 비어있고 DB에 데이터가 있는 경우 DB 데이터 즉시 적용
+          this.applyRemotePersistentData(remoteData, false);
+          try {
+            localStorage.setItem('2jun_fb_items_migrated_v1', '1');
+          } catch (_) {}
+          return;
+        }
+        return;
+      }
+
+      // 2) 최초 1회 마이그레이션 완료 이후: 미전송 로컬 변경사항이 있거나 조회 도중 로컬 변경이 일어났다면 DB로 푸시
+      if (this.hasUnsyncedItems || this.lastLocalItemMutationTime >= syncStartTime) {
+        if (remoteData && remoteData.unlocked) {
+          this.unlockedCosmetics = { ...remoteData.unlocked, ...(this.unlockedCosmetics || {}) };
+        }
+        await this.pushPersistentDataToFirebase(true);
+        return;
+      }
+
+      // 3) DB에 저장된 최신 아이템·장착·코인 정보를 현재 브라우저에 반영
+      if (remoteData) {
+        this.applyRemotePersistentData(remoteData, false);
+      } else if (reachable && hasLocalAssets) {
+        // 만약 DB 데이터가 비어있다면 현재 로컬 데이터를 DB로 복구 전송
+        await this.pushPersistentDataToFirebase(true);
+      }
+    };
+
+    const p = runSync();
+    this.activeItemSyncPromise = p;
+    try {
+      await p;
+    } finally {
+      if (this.activeItemSyncPromise === p) {
+        this.activeItemSyncPromise = null;
+      }
+    }
   }
 
   initDOM() {
@@ -2181,6 +2514,8 @@ class InfiniteMathStairsGame {
     } else {
       this.updateRankingEntry(this.nickname, this.bestStair, this.bestIQ, false);
     }
+    // 최초 1회 로컬 장착 아이템·보유 아이템·코인 정보를 Firebase DB로 전송/갱신하고 실시간 동기화
+    this.syncPersistentDataWithFirebase();
     this.fetchOnlineRankings();
 
     // 시작 및 재시작 버튼
@@ -2223,17 +2558,25 @@ class InfiniteMathStairsGame {
     document.getElementById('btn-refresh-ranking-start')?.addEventListener('click', () => this.fetchOnlineRankings(true));
     document.getElementById('ranking-sync-badge')?.addEventListener('click', () => this.fetchOnlineRankings(true));
 
-    // 탭 전환/종료 시 아직 서버에 전송되지 않은 최고 기록이 있으면 즉시 전송
-    const flushUnsyncedScore = () => {
+    // 탭 전환/종료 시 아직 서버에 전송되지 않은 최고 기록 및 아이템·코인 정보가 있으면 즉시 전송
+    const flushUnsyncedData = () => {
       if (this.nickname && this.hasUnsyncedBest && this.rankingsMap[this.nickname]) {
         this.postScoreOnline(this.rankingsMap[this.nickname], true);
       }
+      if (this.hasUnsyncedItems) {
+        this.pushPersistentDataToFirebase(false);
+      }
     };
-    window.addEventListener('pagehide', flushUnsyncedScore);
+    window.addEventListener('pagehide', flushUnsyncedData);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
-        flushUnsyncedScore();
+        flushUnsyncedData();
+      } else if (document.visibilityState === 'visible') {
+        this.syncPersistentDataWithFirebase();
       }
+    });
+    window.addEventListener('focus', () => {
+      this.syncPersistentDataWithFirebase();
     });
 
     // 옵션 모달 열기/닫기/저장
@@ -2423,6 +2766,7 @@ class InfiniteMathStairsGame {
     const newInterval = Math.min(999, Math.max(1, Math.floor(rawVal || 20)));
     this.quizInterval = newInterval;
     localStorage.setItem('2jun_quiz_interval_v2', String(this.quizInterval));
+    this.savePersistentData();
     this.syncIntervalLabels();
     this.updateHUD();
     this.closeOptionsModal();
@@ -2997,8 +3341,9 @@ class InfiniteMathStairsGame {
           if (rawData && typeof rawData === 'object') {
             Object.entries(rawData).forEach(([key, item]) => {
               if (!item || typeof item !== 'object') return;
+              if (key.startsWith('__') || item.isPlayerData) return;
               const cNick = this.normalizeNickname(item.nick || key);
-              if (!cNick) return;
+              if (!cNick || cNick.startsWith('__')) return;
               const s = Math.max(0, Math.floor(Number(item.stair) || 0));
               const q = Math.max(0, Math.floor(Number(item.iq) || 0));
               const ts = Number(item.updatedAt) || Date.now();
@@ -3013,6 +3358,9 @@ class InfiniteMathStairsGame {
               }
             });
           }
+
+          // 아이템·코인·장착 정보도 함께 Firebase DB와 동기화
+          await this.syncPersistentDataWithFirebase();
 
           // 2) 최초 1회(또는 Firebase DB가 비어있을 때) 기존 로컬/ntfy 기록을 Firebase로 자동 이관하여 기존 도전자 기록 완벽 보존
           const alreadyMigrated = localStorage.getItem('2jun_fb_migrated_v1') === '1';
@@ -3315,6 +3663,7 @@ class InfiniteMathStairsGame {
     }
     this.renderShopItems();
     this.elShopModal.classList.add('active');
+    this.syncPersistentDataWithFirebase();
   }
 
   closeShopModal() {
@@ -3775,7 +4124,8 @@ class InfiniteMathStairsGame {
       tag.className = 'buff-tag';
       tag.textContent = `🧠 IQ +30 대기중`;
       this.elActiveBuffs.appendChild(tag);
-    } else if ((this.inventory.iq_booster || 0) > 0 || this.iqBoosterActive) {
+    }
+    if ((this.inventory.iq_booster || 0) > 0 || this.iqBoosterActive) {
       const tag = document.createElement('span');
       tag.className = 'buff-tag';
       tag.textContent = `🧪 IQ +20 대기중`;

@@ -184,18 +184,26 @@ body {
 #status-card {
   position: absolute;
   top: 104px;
-  left: 14px;
+  left: 12px;
+  right: 12px;
+  width: fit-content;
+  max-width: calc(100% - 24px);
   display: flex;
   align-items: center;
   gap: 10px;
   background: rgba(15, 23, 42, 0.78);
   backdrop-filter: blur(6px);
-  padding: 7px 14px 7px 10px;
+  padding: 7px 12px 7px 10px;
   border-radius: 16px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   z-index: 9;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   pointer-events: none;
+}
+
+.status-info {
+  min-width: 0;
+  flex: 1;
 }
 
 .avatar-preview {
@@ -207,17 +215,25 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 #status-name {
   font-family: 'Jua', sans-serif;
   font-size: 0.96rem;
   color: #fef08a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 #status-desc {
   font-size: 0.75rem;
   color: #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 하단 조작 버튼 */
@@ -905,6 +921,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .life-pill {
@@ -914,6 +931,8 @@ body {
   font-size: 0.72rem;
   padding: 1px 7px;
   border-radius: 99px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .buff-row {
@@ -931,6 +950,7 @@ body {
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 99px;
+  white-space: nowrap;
 }
 
 /* 인게임 퀵 아이템 바 */
@@ -940,42 +960,35 @@ body {
   left: 10px;
   right: 10px;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 5px;
   z-index: 12;
 }
 
-@media (max-width: 480px), (max-height: 750px) {
-  #quick-item-bar {
-    bottom: calc(88px + env(safe-area-inset-bottom, 8px));
-    gap: 4px;
-    left: 8px;
-    right: 8px;
-  }
-  .quick-item-btn,
-  .quick-life-indicator {
-    padding: 5px 4px;
-    font-size: 0.68rem;
-  }
-}
-
 .quick-item-btn,
 .quick-life-indicator {
-  flex: 1;
+  flex: 1 1 calc(33.333% - 5px);
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  background: rgba(15, 23, 42, 0.84);
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.86);
   backdrop-filter: blur(4px);
   border: 2px solid rgba(255, 255, 255, 0.35);
   color: #fff;
   font-family: 'Jua', sans-serif;
-  font-size: 0.74rem;
-  padding: 6px 5px;
+  font-size: 0.76rem;
+  padding: 6px 6px;
   border-radius: 12px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
   white-space: nowrap;
+}
+
+.quick-life-indicator {
+  border-color: rgba(251, 113, 133, 0.65);
+  background: rgba(30, 15, 35, 0.86);
 }
 
 .quick-item-btn {
@@ -991,10 +1004,75 @@ body {
 .quick-life-indicator strong {
   background: #f59e0b;
   color: #fff;
-  padding: 1px 5px;
+  padding: 1px 6px;
   border-radius: 99px;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   margin-left: 1px;
+  flex-shrink: 0;
+}
+
+.quick-life-indicator strong {
+  background: #e11d48;
+}
+
+@media (max-width: 480px), (max-height: 750px) {
+  #hud {
+    padding: 8px 10px 6px;
+  }
+  .hud-top {
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .stage-badge {
+    font-size: 0.78rem;
+    padding: 4px 8px;
+    max-width: 124px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .score-box {
+    padding: 3px 7px;
+    gap: 4px;
+  }
+  #stair-count {
+    font-size: 1.25rem;
+  }
+  .best-score {
+    font-size: 0.66rem;
+  }
+  .coin-box {
+    font-size: 0.84rem;
+    padding: 3px 7px;
+  }
+  .hud-actions {
+    gap: 4px;
+  }
+  .icon-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 0.92rem;
+  }
+  #status-card {
+    top: 94px;
+    left: 8px;
+    right: 8px;
+    max-width: calc(100% - 16px);
+    padding: 5px 10px 5px 8px;
+    gap: 8px;
+  }
+  #quick-item-bar {
+    bottom: calc(84px + env(safe-area-inset-bottom, 8px));
+    gap: 4px;
+    left: 8px;
+    right: 8px;
+  }
+  .quick-item-btn,
+  .quick-life-indicator {
+    flex: 1 1 calc(33.333% - 4px);
+    padding: 5px 4px;
+    font-size: 0.72rem;
+    border-radius: 10px;
+  }
 }
 
 .modal-btn-row-equal {
@@ -1189,6 +1267,7 @@ body {
 
 .shop-item-info {
   flex: 1;
+  min-width: 0;
 }
 
 .shop-item-title {
@@ -1197,6 +1276,7 @@ body {
   color: #0f172a;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
