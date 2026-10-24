@@ -126,7 +126,7 @@ const SHOP_ITEMS = {
       name: '바람신발',
       icon: '🌪️',
       price: 50,
-      desc: '계단을 올라갈 때마다 발에서 시원한 에메랄드 바람 소용돌이 효과가 납니다.'
+      desc: '날개 달린 에메랄드 신발! 계단을 오를 때마다 거대한 폭풍 회오리 기둥과 칼바람 충격파가 폭발합니다.'
     },
     {
       id: 'shoe_fire',
@@ -134,7 +134,7 @@ const SHOP_ITEMS = {
       name: '불신발',
       icon: '🔥',
       price: 50,
-      desc: '계단을 올라갈 때마다 발에서 타오르는 불꽃 화염 효과가 납니다.'
+      desc: '타오르는 마그마 신발! 계단을 밟을 때마다 치솟는 화염 불기둥과 불꽃 폭발 이펙트가 터져 나옵니다.'
     },
     {
       id: 'shoe_lightning',
@@ -142,7 +142,7 @@ const SHOP_ITEMS = {
       name: '번개신발',
       icon: '⚡',
       price: 50,
-      desc: '계단을 올라갈 때마다 발에서 짜릿한 황금 번개 스파크 효과가 납니다.'
+      desc: '뇌신 볼트 신발! 계단을 오를 때마다 하늘에서 내리꽂히는 천둥 낙뢰와 전격 스파크가 작렬합니다.'
     },
     {
       id: 'shoe_rainbow',
@@ -150,7 +150,7 @@ const SHOP_ITEMS = {
       name: '무지개신발',
       icon: '🌈',
       price: 100,
-      desc: '발에서 영롱한 무지개 효과가 나며, 지나온 계단마다 무지개 자국이 남았다가 자연스럽게 사라집니다.'
+      desc: '프리즘 스타 신발! 계단마다 찬란한 네온 무지개 아치와 별빛 분수가 솟구치며 영롱한 무지개 계단이 남습니다.'
     },
     {
       id: 'wing_gold',
@@ -158,7 +158,7 @@ const SHOP_ITEMS = {
       name: '천재의 황금 날개 (추천)',
       icon: '🪽',
       price: 80,
-      desc: '등 뒤에 황금빛 날개가 달려 계단을 오를 때마다 날갯짓과 황금 깃털이 흩날립니다.'
+      desc: '등 뒤에 거대한 황금빛 천사 날개가 달려 계단을 오를 때마다 찬란한 황금 깃털과 빛무리 파동이 퍼집니다.'
     },
     {
       id: 'aura_crown',
@@ -166,7 +166,7 @@ const SHOP_ITEMS = {
       name: '초신성 네온 왕관 (추천)',
       icon: '👑',
       price: 120,
-      desc: '머리 위에 둥둥 떠 있는 빛나는 왕관과 반짝이는 별빛 아우라가 함께합니다.'
+      desc: '보석이 박힌 초신성 왕관과 회전하는 별빛 궤도! 계단을 오를 때마다 초신성 빛기둥과 마법진 폭발이 펼쳐집니다.'
     }
   ]
 };
@@ -690,6 +690,313 @@ function generateMathProblemByIQ(iq) {
   };
 }
 
+// 4각 초신성 별빛 도형 그리기 헬퍼
+function drawStar4(ctx, cx, cy, outerR, innerR, color, glowColor = null, rot = 0) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (rot) ctx.rotate(rot);
+  if (glowColor) {
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = 12;
+  }
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const ang = (i * Math.PI) / 4;
+    if (i === 0) ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
+    else ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// 5각 별 도형 그리기 헬퍼
+function drawStar5(ctx, cx, cy, outerR, innerR, color, glowColor = null, rot = 0) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (rot) ctx.rotate(rot);
+  if (glowColor) {
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = 10;
+  }
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const ang = -Math.PI / 2 + (i * Math.PI) / 5;
+    if (i === 0) ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
+    else ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// 화려한 꾸미기 신발 & 발밑 원소 아우라 렌더러
+function drawCosmeticShoe(ctx, legX, legY, shoeType, stageIdx, isFailing, tick, isClimbing, legIndex) {
+  const sx = legX - 2;
+  const sy = legY + 8;
+
+  if (!shoeType || isFailing) {
+    let baseColor = '#111827';
+    if (stageIdx === 0 || isFailing) baseColor = '#d97706';
+    else if (stageIdx <= 2) baseColor = '#ef4444';
+    ctx.fillStyle = baseColor;
+    ctx.beginPath();
+    ctx.roundRect(sx, sy + 1, 11, 5.5, 2.5);
+    ctx.fill();
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(sx, sy + 5, 11, 1.8);
+    return;
+  }
+
+  ctx.save();
+
+  if (shoeType === 'shoe_wind') {
+    // 1) 에메랄드 폭풍 회전 오라 링
+    ctx.strokeStyle = 'rgba(34, 211, 238, 0.85)';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#22d3ee';
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    const spin = (tick * 0.25 + legIndex) % (Math.PI * 2);
+    ctx.ellipse(sx + 6, sy + 5, 13, 4.5, 0, spin, spin + Math.PI * 1.35);
+    ctx.stroke();
+
+    // 2) 신발 본체 (에메랄드/시안 하이탑 스니커즈)
+    const grad = ctx.createLinearGradient(sx, sy, sx + 13, sy + 7);
+    grad.addColorStop(0, '#06b6d4');
+    grad.addColorStop(0.5, '#22d3ee');
+    grad.addColorStop(1, '#10b981');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(sx - 1, sy, 13, 6.5, 3);
+    ctx.fill();
+
+    // 발광 밑창
+    ctx.fillStyle = '#ecfeff';
+    ctx.fillRect(sx - 1, sy + 5, 13, 2);
+
+    // 3) 헤르메스 바람 날개 (발목 뒤에서 퍼덕이는 하얀/민트 날개)
+    const wingFlap = Math.sin(tick * 0.35 + legIndex * 1.5) * 0.35 + (isClimbing ? 0.25 : 0);
+    ctx.save();
+    ctx.translate(sx + 1, sy + 2);
+    ctx.rotate(wingFlap);
+    ctx.fillStyle = '#ecfeff';
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-11, -8, -13, -2);
+    ctx.quadraticCurveTo(-8, 1, -10, 4);
+    ctx.quadraticCurveTo(-4, 4, 0, 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  } else if (shoeType === 'shoe_fire') {
+    // 1) 타오르는 마그마 불꽃 아우라 (발 주변에서 일렁이는 화염)
+    ctx.shadowColor = '#f97316';
+    ctx.shadowBlur = 16;
+    for (let f = 0; f < 3; f++) {
+      const flameH = 8 + Math.sin(tick * 0.4 + f * 2 + legIndex) * 4 + (isClimbing ? 5 : 0);
+      const fx = sx + 1 + f * 4.5;
+      ctx.fillStyle = f === 1 ? '#fde047' : '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(fx - 3.5, sy + 5);
+      ctx.quadraticCurveTo(fx - 2, sy + 2 - flameH * 0.6, fx, sy - flameH);
+      ctx.quadraticCurveTo(fx + 2, sy + 2 - flameH * 0.6, fx + 3.5, sy + 5);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 2) 신발 본체 (크림슨-골드 마그마 부츠)
+    const grad = ctx.createLinearGradient(sx, sy, sx + 13, sy + 7);
+    grad.addColorStop(0, '#dc2626');
+    grad.addColorStop(0.6, '#f97316');
+    grad.addColorStop(1, '#fde047');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(sx - 1, sy, 13, 6.5, 3);
+    ctx.fill();
+
+    // 불꽃 라인 & 황금 밑창
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(sx - 1, sy + 5, 13, 2);
+  } else if (shoeType === 'shoe_lightning') {
+    // 1) 뇌신 볼트 스니커즈 본체
+    ctx.shadowColor = '#facc15';
+    ctx.shadowBlur = 16;
+    const grad = ctx.createLinearGradient(sx, sy, sx + 13, sy + 7);
+    grad.addColorStop(0, '#facc15');
+    grad.addColorStop(0.5, '#fef08a');
+    grad.addColorStop(1, '#38bdf8');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(sx - 1, sy, 13, 6.5, 3);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(sx - 1, sy + 5, 13, 2);
+
+    // 2) 발 주변에서 실시간으로 튀는 지그재그 전격 스파크 아크!
+    ctx.strokeStyle = tick % 2 === 0 ? '#fef08a' : '#38bdf8';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    const jx = sx + 5;
+    const jy = sy + 3;
+    ctx.moveTo(jx - 9, jy - 2 + (tick % 3));
+    ctx.lineTo(jx - 3, jy - 8 - (tick % 4));
+    ctx.lineTo(jx + 2, jy - 3);
+    ctx.lineTo(jx + 10, jy - 10 + ((tick + legIndex) % 5));
+    ctx.stroke();
+  } else if (shoeType === 'shoe_rainbow') {
+    // 1) 프리즘 무지개 빛무리 링
+    const hue = (tick * 10 + legIndex * 60) % 360;
+    ctx.shadowColor = `hsl(${hue}, 95%, 60%)`;
+    ctx.shadowBlur = 16;
+
+    const rGrad = ctx.createLinearGradient(sx - 2, sy, sx + 14, sy);
+    rGrad.addColorStop(0, `hsl(${hue}, 95%, 60%)`);
+    rGrad.addColorStop(0.5, `hsl(${(hue + 120) % 360}, 95%, 60%)`);
+    rGrad.addColorStop(1, `hsl(${(hue + 240) % 360}, 95%, 60%)`);
+
+    ctx.strokeStyle = rGrad;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.ellipse(sx + 5.5, sy + 6, 13, 4, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 2) 프리즘 스니커즈 본체
+    ctx.fillStyle = rGrad;
+    ctx.beginPath();
+    ctx.roundRect(sx - 1, sy, 13, 6.5, 3);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(sx - 1, sy + 5, 13, 2);
+
+    // 3) 발 옆에 반짝이는 미니 프리즘 스타
+    drawStar4(ctx, sx - 3, sy + 1, 4.5, 1.5, '#ffffff', `hsl(${hue}, 95%, 65%)`, tick * 0.15);
+  }
+
+  ctx.restore();
+}
+
+// 초신성 네온 왕관 & 헤일로 렌더러 (머리 위)
+function drawSupernovaCrown(ctx, baseY, tick, isClimbing) {
+  const crownFloat = Math.sin(tick * 0.16) * 3.5 - (isClimbing ? 3 : 0);
+  const pulse = 1 + Math.sin(tick * 0.22) * 0.08 + (isClimbing ? 0.12 : 0);
+
+  ctx.save();
+  ctx.translate(0, baseY + crownFloat);
+  ctx.scale(pulse, pulse);
+
+  // 1) 왕관 뒤 초신성 네온 헤일로 (이중 광륜)
+  const haloGrad = ctx.createRadialGradient(0, -8, 2, 0, -8, 28);
+  haloGrad.addColorStop(0, 'rgba(254, 240, 138, 0.9)');
+  haloGrad.addColorStop(0.45, 'rgba(56, 189, 248, 0.55)');
+  haloGrad.addColorStop(0.8, 'rgba(244, 114, 182, 0.3)');
+  haloGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+  ctx.fillStyle = haloGrad;
+  ctx.beginPath();
+  ctx.arc(0, -8, 28, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 회전하는 네온 마법 링
+  ctx.save();
+  ctx.translate(0, -7);
+  ctx.strokeStyle = 'rgba(103, 232, 249, 0.85)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 22, 6, Math.sin(tick * 0.08) * 0.2, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  // 2) 왕관 본체 (5봉우리 로열 골드 & 네온 시안 테두리)
+  ctx.shadowColor = '#38bdf8';
+  ctx.shadowBlur = 16;
+
+  const crownGrad = ctx.createLinearGradient(-16, -20, 16, 2);
+  crownGrad.addColorStop(0, '#fef08a');
+  crownGrad.addColorStop(0.45, '#facc15');
+  crownGrad.addColorStop(1, '#ea580c');
+
+  ctx.fillStyle = crownGrad;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.8;
+
+  ctx.beginPath();
+  ctx.moveTo(-15, 2);
+  ctx.lineTo(-18, -13);
+  ctx.lineTo(-10, -6);
+  ctx.lineTo(-6, -17);
+  ctx.lineTo(0, -8);
+  ctx.lineTo(0, -21);
+  ctx.lineTo(0, -8);
+  ctx.closePath();
+
+  // 깔끔한 5봉우리 대칭 패스
+  ctx.beginPath();
+  ctx.moveTo(-15, 2);
+  ctx.lineTo(-18, -13);
+  ctx.lineTo(-11, -6);
+  ctx.lineTo(-7, -17);
+  ctx.lineTo(-2.5, -8);
+  ctx.lineTo(0, -22);
+  ctx.lineTo(2.5, -8);
+  ctx.lineTo(7, -17);
+  ctx.lineTo(11, -6);
+  ctx.lineTo(18, -13);
+  ctx.lineTo(15, 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // 왕관 하단 네온 밴드
+  ctx.fillStyle = '#0284c7';
+  ctx.fillRect(-14.5, -2, 29, 3.5);
+
+  // 3) 왕관 봉우리 끝 네온 진주 오브 5개
+  const tips = [
+    { x: -18, y: -13, c: '#67e8f9' },
+    { x: -7, y: -17, c: '#f472b6' },
+    { x: 0, y: -22, c: '#ffffff' },
+    { x: 7, y: -17, c: '#f472b6' },
+    { x: 18, y: -13, c: '#67e8f9' }
+  ];
+  tips.forEach((t) => {
+    ctx.fillStyle = t.c;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // 4) 왕관 중앙 다이아몬드 보석 & 좌우 사파이어/루비 보석
+  ctx.fillStyle = '#f43f5e';
+  ctx.beginPath();
+  ctx.moveTo(0, -11);
+  ctx.lineTo(3.2, -6.5);
+  ctx.lineTo(0, -2);
+  ctx.lineTo(-3.2, -6.5);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.beginPath();
+  ctx.arc(-8.5, -5.5, 2, 0, Math.PI * 2);
+  ctx.arc(8.5, -5.5, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 5) 중앙 정점 초신성 십자 스타 플레어
+  const starSize = 6.5 + Math.sin(tick * 0.3) * 2 + (isClimbing ? 3 : 0);
+  drawStar4(ctx, 0, -22, starSize, starSize * 0.3, '#ffffff', '#67e8f9', tick * 0.08);
+
+  ctx.restore();
+}
+
 // 신이준 캐릭터 렌더러 (방향 전환, 역동적인 계단 오르기 팔다리 모션, 꾸미기 신발/날개/왕관 포함)
 function drawShinYiJun(ctx, x, y, stageIdx, facing, climbProgress, footParity, tick, isFailing = false, equipped = {}, alpha = 1) {
   ctx.save();
@@ -715,32 +1022,70 @@ function drawShinYiJun(ctx, x, y, stageIdx, facing, climbProgress, footParity, t
   ctx.translate(0, jumpArc);
   ctx.rotate(leanAngle);
 
-  // Lv.7 천재 황금 아우라 또는 초신성 왕관 아우라
+  // Lv.7 천재 황금 아우라 또는 초신성 네온 왕관의 초화려 멀티 레이어 아우라!
   if ((stageIdx >= 6 || equipped.accessory === 'aura_crown') && !isFailing) {
-    const auraRadius = 42 + Math.sin(tick * 0.2) * 5;
-    const grad = ctx.createRadialGradient(0, -40, 10, 0, -40, auraRadius);
-    grad.addColorStop(0, equipped.accessory === 'aura_crown' ? 'rgba(56, 189, 248, 0.5)' : 'rgba(253, 224, 71, 0.55)');
-    grad.addColorStop(1, 'rgba(253, 224, 71, 0)');
+    const isCrown = equipped.accessory === 'aura_crown';
+    const auraRadius = (isCrown ? 54 : 42) + Math.sin(tick * 0.2) * 6 + (isClimbing ? 10 : 0);
+    const grad = ctx.createRadialGradient(0, -42, 6, 0, -42, auraRadius);
+    if (isCrown) {
+      grad.addColorStop(0, 'rgba(254, 240, 138, 0.65)');
+      grad.addColorStop(0.4, 'rgba(56, 189, 248, 0.5)');
+      grad.addColorStop(0.75, 'rgba(244, 114, 182, 0.35)');
+      grad.addColorStop(1, 'rgba(168, 85, 247, 0)');
+    } else {
+      grad.addColorStop(0, 'rgba(253, 224, 71, 0.55)');
+      grad.addColorStop(1, 'rgba(253, 224, 71, 0)');
+    }
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(0, -40, auraRadius, 0, Math.PI * 2);
+    ctx.arc(0, -42, auraRadius, 0, Math.PI * 2);
     ctx.fill();
+
+    // 초신성 왕관 장착 시: 등 뒤에서 회전하는 초신성 광선 & 궤도 별빛
+    if (isCrown) {
+      ctx.save();
+      ctx.translate(0, -44);
+      ctx.rotate(tick * 0.04);
+      ctx.strokeStyle = 'rgba(103, 232, 249, 0.45)';
+      ctx.lineWidth = 2;
+      for (let r = 0; r < 4; r++) {
+        ctx.rotate(Math.PI / 4);
+        ctx.beginPath();
+        ctx.moveTo(-auraRadius * 0.85, 0);
+        ctx.lineTo(auraRadius * 0.85, 0);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // 캐릭터 주변을 공전하는 초신성 네온 스타 3개 (뒤쪽 궤도)
+      for (let s = 0; s < 3; s++) {
+        const orbitAng = tick * 0.09 + (s * Math.PI * 2) / 3;
+        if (Math.sin(orbitAng) < 0) {
+          const ox = Math.cos(orbitAng) * 34;
+          const oy = -44 + Math.sin(orbitAng) * 14;
+          const starColors = ['#38bdf8', '#fde047', '#f472b6'];
+          drawStar4(ctx, ox, oy, 6, 2, '#ffffff', starColors[s], tick * 0.1);
+        }
+      }
+    }
   }
 
   // 꾸미기 아이템: 천재의 황금 날개 (등 뒤)
   if (equipped.accessory === 'wing_gold' && !isFailing) {
-    const flap = isClimbing ? Math.sin(climbProgress * Math.PI * 2) * 0.35 : Math.sin(tick * 0.18) * 0.18;
+    const flap = isClimbing ? Math.sin(climbProgress * Math.PI * 2) * 0.42 : Math.sin(tick * 0.18) * 0.2;
     ctx.save();
     ctx.translate(-10, -36);
     ctx.rotate(flap);
+    ctx.shadowColor = '#fde047';
+    ctx.shadowBlur = 12;
     ctx.fillStyle = '#fde047';
     ctx.strokeStyle = '#ca8a04';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.quadraticCurveTo(-28, -22, -34, -4);
-    ctx.quadraticCurveTo(-24, 4, -28, 10);
-    ctx.quadraticCurveTo(-14, 10, 0, 8);
+    ctx.quadraticCurveTo(-32, -26, -38, -5);
+    ctx.quadraticCurveTo(-26, 4, -31, 11);
+    ctx.quadraticCurveTo(-16, 11, 0, 8);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -769,36 +1114,9 @@ function drawShinYiJun(ctx, x, y, stageIdx, facing, climbProgress, footParity, t
   ctx.fillRect(leg1X, leg1Y, 7, 11);
   ctx.fillRect(leg2X, leg2Y, 7, 11);
 
-  // 신발 색상 (꾸미기 신발 장착 시 특별 디자인 적용!)
-  let shoeColor = '#111827';
-  let shoeGlow = null;
-  if (equipped.shoe === 'shoe_wind') {
-    shoeColor = '#06b6d4';
-    shoeGlow = '#67e8f9';
-  } else if (equipped.shoe === 'shoe_fire') {
-    shoeColor = '#ef4444';
-    shoeGlow = '#fde047';
-  } else if (equipped.shoe === 'shoe_lightning') {
-    shoeColor = '#facc15';
-    shoeGlow = '#fef08a';
-  } else if (equipped.shoe === 'shoe_rainbow') {
-    const hue = (tick * 8) % 360;
-    shoeColor = `hsl(${hue}, 90%, 55%)`;
-    shoeGlow = '#ffffff';
-  } else if (stageIdx === 0 || isFailing) {
-    shoeColor = '#d97706';
-  } else if (stageIdx <= 2) {
-    shoeColor = '#ef4444';
-  }
-
-  if (shoeGlow && !isFailing) {
-    ctx.shadowColor = shoeGlow;
-    ctx.shadowBlur = 8;
-  }
-  ctx.fillStyle = shoeColor;
-  ctx.fillRect(leg1X - 1, leg1Y + 9, 10, 5);
-  ctx.fillRect(leg2X - 1, leg2Y + 9, 10, 5);
-  ctx.shadowBlur = 0;
+  // 화려한 꾸미기 신발 렌더링 (날개/화염/번개/무지개 오라 포함!)
+  drawCosmeticShoe(ctx, leg1X, leg1Y, equipped.shoe, stageIdx, isFailing, tick, isClimbing, 0);
+  drawCosmeticShoe(ctx, leg2X, leg2Y, equipped.shoe, stageIdx, isFailing, tick, isClimbing, 1);
 
   // 뒷팔 스윙
   const armSwing = isClimbing ? Math.sin(climbProgress * Math.PI) * 12 * strideDir : Math.sin(tick * 0.16) * 3;
