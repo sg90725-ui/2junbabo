@@ -73,7 +73,16 @@ const STAGES = [
   }
 ];
 
-// 상점 아이템 데이터 정의 (기능 아이템 + 꾸미기 아이템)
+// 상점 아이템 데이터 정의 (기능 아이템 + 신발/날개/오라 + 펫/무기/계단스킨)
+const SHOP_SLOT_LABELS = {
+  shoe: '👟 신발',
+  wing: '🪽 날개',
+  accessory: '👑 머리/오라',
+  hand: '⚔️ 손 무기',
+  pet: '🐉 동행 펫',
+  stair: '🪜 계단 스킨'
+};
+
 const SHOP_ITEMS = {
   func: [
     {
@@ -84,6 +93,13 @@ const SHOP_ITEMS = {
       desc: '수학문제를 풀 때 제한시간을 즉시 +30초 추가합니다.'
     },
     {
+      id: 'math_hint',
+      name: '수학문제 힌트보기',
+      icon: '💡',
+      price: 5,
+      desc: '수학문제 핵심 풀이 힌트를 보여주고 오답 보기 2개를 제거해 줍니다.'
+    },
+    {
       id: 'slow_stamina',
       name: '슬로우 타이머 물약',
       icon: '🐢',
@@ -91,11 +107,39 @@ const SHOP_ITEMS = {
       desc: '1분간 계단 오를 때 제한시간(게이지)이 절반 속도로 천천히 감소합니다.'
     },
     {
-      id: 'math_hint',
-      name: '수학문제 힌트보기',
-      icon: '💡',
-      price: 5,
-      desc: '수학문제 핵심 풀이 힌트를 보여주고 오답 보기 2개를 제거해 줍니다.'
+      id: 'double_coin',
+      name: '황금 코인 자석 (추천)',
+      icon: '🧲',
+      price: 10,
+      desc: '1분간 10계단마다 받는 코인이 2배(2코인)로 증가합니다!'
+    },
+    {
+      id: 'direction_guide',
+      name: '천재의 방향 나침반 (NEW)',
+      icon: '🧭',
+      price: 12,
+      desc: '1분간 다음 계단에 [오르기]를 눌러야 할지 [방향전환]을 눌러야 할지 네온 가이드를 표시합니다!'
+    },
+    {
+      id: 'rocket_boost',
+      name: '초고속 로켓 부스터 (NEW)',
+      icon: '🚀',
+      price: 15,
+      desc: '사용 즉시 방향 실수 걱정 없이 50계단을 초고속 로켓 점프로 단숨에 자동 돌파합니다!'
+    },
+    {
+      id: 'fever_jackpot',
+      name: '다이아 코인 잭팟 물약 (NEW)',
+      icon: '💎',
+      price: 15,
+      desc: '구매 시 다음 등반 1분간 10계단마다 +3코인을 추가 획득하고, 수학 정답 시 +5코인을 보너스로 받습니다!'
+    },
+    {
+      id: 'iq_booster',
+      name: '천재의 두뇌 비타민 (추천)',
+      icon: '🧪',
+      price: 25,
+      desc: '다음 수학문제를 맞힐 때 IQ가 10 대신 +20 상승합니다!'
     },
     {
       id: 'extra_life',
@@ -105,18 +149,18 @@ const SHOP_ITEMS = {
       desc: '계단에서 떨어지거나 시간이 다 되어도 0계단으로 가지 않고 그 자리에서 즉시 부활합니다.'
     },
     {
-      id: 'double_coin',
-      name: '황금 코인 자석 (추천)',
-      icon: '🧲',
-      price: 15,
-      desc: '1분간 10계단마다 받는 코인이 2배(2코인)로 증가합니다!'
+      id: 'quiz_pass',
+      name: '수학문제 만점 프리패스권 (NEW)',
+      icon: '🎫',
+      price: 35,
+      desc: '어려운 수학 문제가 나왔을 때 누르면 계산 없이 즉시 정답 처리되어 IQ가 상승합니다!'
     },
     {
-      id: 'iq_booster',
-      name: '천재의 두뇌 비타민 (추천)',
-      icon: '🧪',
-      price: 25,
-      desc: '다음 수학문제를 맞힐 때 IQ가 10 대신 +20 상승합니다!'
+      id: 'einstein_capsule',
+      name: '아인슈타인 각성 캡슐 (NEW)',
+      icon: '🧠',
+      price: 45,
+      desc: '다음 수학문제를 맞힐 때 IQ가 한 번에 +30 폭발적으로 상승합니다! (초고속 진급용)'
     }
   ],
   cosmetic: [
@@ -145,6 +189,22 @@ const SHOP_ITEMS = {
       desc: '뇌신 볼트 신발! 계단을 오를 때마다 하늘에서 내리꽂히는 천둥 낙뢰와 전격 스파크가 작렬합니다.'
     },
     {
+      id: 'shoe_ice',
+      slot: 'shoe',
+      name: '절대영도 얼음신발 (NEW)',
+      icon: '❄️',
+      price: 60,
+      desc: '크리스탈 아이스 부츠! 계단을 밟을 때마다 빙하 얼음 기둥과 눈꽃 블리자드 결정이 화려하게 피어납니다.'
+    },
+    {
+      id: 'shoe_galaxy',
+      slot: 'shoe',
+      name: '은하수 우주신발 (NEW)',
+      icon: '🌌',
+      price: 85,
+      desc: '네뷸라 코스믹 스니커즈! 계단을 오를 때마다 보랏빛 은하 성운 소용돌이와 유성우가 쏟아집니다.'
+    },
+    {
       id: 'shoe_rainbow',
       slot: 'shoe',
       name: '무지개신발',
@@ -153,12 +213,52 @@ const SHOP_ITEMS = {
       desc: '프리즘 스타 신발! 계단마다 찬란한 네온 무지개 아치와 별빛 분수가 솟구치며 영롱한 무지개 계단이 남습니다.'
     },
     {
+      id: 'shoe_cyber',
+      slot: 'shoe',
+      name: '사이버 제트 부스터 (NEW)',
+      icon: '🤖',
+      price: 115,
+      desc: '미래형 플라즈마 제트 부츠! 발밑에서 푸른 추진 화염과 사이버 홀로그램 레이저 링이 분사됩니다.'
+    },
+    {
       id: 'wing_gold',
-      slot: 'accessory',
+      slot: 'wing',
       name: '천재의 황금 날개 (추천)',
       icon: '🪽',
       price: 80,
       desc: '등 뒤에 거대한 황금빛 천사 날개가 달려 계단을 오를 때마다 찬란한 황금 깃털과 빛무리 파동이 퍼집니다.'
+    },
+    {
+      id: 'wing_demon',
+      slot: 'wing',
+      name: '심연의 드래곤 윙 (NEW)',
+      icon: '🦇',
+      price: 85,
+      desc: '카리스마 넘치는 흑염 드래곤 날개! 계단을 오를 때마다 붉은 암흑 화염과 드래곤 오라가 뿜어져 나옵니다.'
+    },
+    {
+      id: 'wing_cyber',
+      slot: 'wing',
+      name: '사이버 네온 메카 윙 (NEW)',
+      icon: '🦋',
+      price: 95,
+      desc: '등 뒤에 펼쳐지는 미래형 홀로그램 에너지 날개! 계단을 오를 때마다 사이버 네온 입자와 레이저 파동이 퍼집니다.'
+    },
+    {
+      id: 'wing_fairy',
+      slot: 'wing',
+      name: '프리즘 요정 나비 날개 (NEW)',
+      icon: '🌸',
+      price: 110,
+      desc: '영롱하게 빛나는 크리스탈 요정 날개! 계단을 오를 때마다 핑크빛 벚꽃잎과 요정 별가루가 흩날립니다.'
+    },
+    {
+      id: 'aura_visor',
+      slot: 'accessory',
+      name: '사이버 천재 스카우터 (NEW)',
+      icon: '🥽',
+      price: 65,
+      desc: '눈 위에 장착하는 미래형 홀로그램 스카우터 고글! 실시간 디지털 타겟팅 링과 네온 레이저가 빛납니다.'
     },
     {
       id: 'aura_crown',
@@ -167,6 +267,88 @@ const SHOP_ITEMS = {
       icon: '👑',
       price: 120,
       desc: '보석이 박힌 초신성 왕관과 회전하는 별빛 궤도! 계단을 오를 때마다 초신성 빛기둥과 마법진 폭발이 펼쳐집니다.'
+    },
+    {
+      id: 'aura_math_god',
+      slot: 'accessory',
+      name: '수학신의 황금 후광 (NEW)',
+      icon: '🔮',
+      price: 150,
+      desc: '등 뒤와 머리 위에서 회전하는 고대 수학 공식(π, ∑, ∞, √) 황금 마법진! 매 스텝마다 신성한 황금 공식이 폭발합니다.'
+    }
+  ],
+  special: [
+    {
+      id: 'hand_lollipop',
+      slot: 'hand',
+      name: '자이언트 무지개 막대사탕 (NEW)',
+      icon: '🍭',
+      price: 45,
+      desc: '손에 거대하고 달콤한 회오리 무지개 막대사탕을 들고 신나게 계단을 오릅니다! 달콤한 사탕 별빛이 톡톡 튑니다.'
+    },
+    {
+      id: 'hand_wand',
+      slot: 'hand',
+      name: '피타고라스 별빛 마법봉 (NEW)',
+      icon: '🪄',
+      price: 65,
+      desc: '황금 별이 박힌 마법 지팡이를 흔들며 계단을 오를 때마다 오색찬란한 마법 별가루를 흩뿌립니다.'
+    },
+    {
+      id: 'hand_sword',
+      slot: 'hand',
+      name: '엑스칼리버 계산기 광선검 (NEW)',
+      icon: '⚔️',
+      price: 80,
+      desc: '푸른 플라즈마가 빛나는 전설의 공학계산기 광선검! 계단을 오를 때마다 날렵한 네온 검기 슬래시가 베어 나갑니다.'
+    },
+    {
+      id: 'pet_owl',
+      slot: 'pet',
+      name: '천재 박사 부엉이 펫 (NEW)',
+      icon: '🦉',
+      price: 60,
+      desc: '학사모를 쓴 귀여운 황금 부엉이가 이준이 옆을 졸졸 날아다니며 지혜의 황금 반짝이를 뿌려줍니다!'
+    },
+    {
+      id: 'pet_ufo',
+      slot: 'pet',
+      name: '외계인 미니 UFO 펫 (NEW)',
+      icon: '🛸',
+      price: 85,
+      desc: '초과학 민트빛 소형 UFO가 캐릭터 옆을 비행하며 무중력 트랙터 빔과 플라즈마 에너지 링을 쏩니다!'
+    },
+    {
+      id: 'pet_dragon',
+      slot: 'pet',
+      name: '아기 골드 드래곤 펫 (추천)',
+      icon: '🐉',
+      price: 110,
+      desc: '전설의 아기 황금용이 함께 날아오르며 계단을 밟을 때마다 귀여운 황금 브레스 불꽃을 뿜어줍니다!'
+    },
+    {
+      id: 'stair_candy',
+      slot: 'stair',
+      name: '달콤 마카롱 캔디 계단 (NEW)',
+      icon: '🍬',
+      price: 55,
+      desc: '모든 일반 계단이 알록달록한 딸기 마카롱과 민트 초코 캔디 계단으로 달콤하게 변신합니다!'
+    },
+    {
+      id: 'stair_gold',
+      slot: 'stair',
+      name: '24K 순금 골드바 계단 (NEW)',
+      icon: '🥇',
+      price: 75,
+      desc: '모든 일반 계단이 번쩍이는 24K 순금 골드바와 다이아몬드 장식 계단으로 럭셔리하게 변신합니다!'
+    },
+    {
+      id: 'stair_neon',
+      slot: 'stair',
+      name: '사이버펑크 네온 계단 (NEW)',
+      icon: '🎛️',
+      price: 95,
+      desc: '모든 일반 계단이 미래도시의 형광 사이버 네온사인과 홀로그램 그리드 보드로 화려하게 변신합니다!'
     }
   ]
 };
@@ -880,6 +1062,76 @@ function drawCosmeticShoe(ctx, legX, legY, shoeType, stageIdx, isFailing, tick, 
 
     // 3) 발 옆에 반짝이는 미니 프리즘 스타
     drawStar4(ctx, sx - 3, sy + 1, 4.5, 1.5, '#ffffff', `hsl(${hue}, 95%, 65%)`, tick * 0.15);
+  } else if (shoeType === 'shoe_ice') {
+    // 1) 절대영도 얼음 결정 오라
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 15;
+    ctx.strokeStyle = '#bae6fd';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.ellipse(sx + 5.5, sy + 5.5, 13, 4, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 2) 크리스탈 아이스 부츠 본체
+    const grad = ctx.createLinearGradient(sx, sy, sx + 13, sy + 7);
+    grad.addColorStop(0, '#e0f2fe');
+    grad.addColorStop(0.5, '#38bdf8');
+    grad.addColorStop(1, '#0284c7');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(sx - 1, sy, 13, 6.5, 3);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(sx - 1, sy + 5, 13, 2);
+    drawStar4(ctx, sx - 2, sy + 2, 4.5, 1.2, '#ffffff', '#38bdf8', tick * 0.12 + legIndex);
+  } else if (shoeType === 'shoe_galaxy') {
+    // 1) 은하수 성운 오라 링
+    ctx.shadowColor = '#c084fc';
+    ctx.shadowBlur = 16;
+    ctx.strokeStyle = 'rgba(192, 132, 252, 0.9)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(sx + 5.5, sy + 5.5, 13.5, 4.2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 2) 코스믹 네뷸라 부츠 본체
+    const grad = ctx.createLinearGradient(sx, sy, sx + 13, sy + 7);
+    grad.addColorStop(0, '#311042');
+    grad.addColorStop(0.5, '#7e22ce');
+    grad.addColorStop(1, '#ec4899');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(sx - 1, sy, 13, 6.5, 3);
+    ctx.fill();
+
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(sx - 1, sy + 5, 13, 1.8);
+    drawStar5(ctx, sx + 12, sy + 1, 4, 1.5, '#fde047', '#c084fc', -tick * 0.15);
+  } else if (shoeType === 'shoe_cyber') {
+    // 1) 사이버 제트 추진 플라즈마 분사구 화염
+    ctx.shadowColor = '#06b6d4';
+    ctx.shadowBlur = 16;
+    const jetLen = 6 + Math.sin(tick * 0.5 + legIndex) * 3 + (isClimbing ? 5 : 0);
+    ctx.fillStyle = '#22d3ee';
+    ctx.beginPath();
+    ctx.moveTo(sx + 1, sy + 6);
+    ctx.lineTo(sx + 5.5, sy + 6 + jetLen);
+    ctx.lineTo(sx + 10, sy + 6);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2) 메카닉 제트 부츠 본체
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.roundRect(sx - 1, sy - 1, 13, 7, 2.5);
+    ctx.fill();
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#f43f5e';
+    ctx.fillRect(sx + 1, sy + 2, 9, 2);
   }
 
   ctx.restore();
@@ -1070,25 +1322,133 @@ function drawShinYiJun(ctx, x, y, stageIdx, facing, climbProgress, footParity, t
     }
   }
 
-  // 꾸미기 아이템: 천재의 황금 날개 (등 뒤)
-  if (equipped.accessory === 'wing_gold' && !isFailing) {
+  // 수학신의 황금 후광 (aura_math_god): 등 뒤에서 회전하는 고대 수학 공식 황금 마법진!
+  if (equipped.accessory === 'aura_math_god' && !isFailing) {
+    ctx.save();
+    ctx.translate(0, -45);
+    const haloR = 46 + Math.sin(tick * 0.15) * 4;
+    const hGrad = ctx.createRadialGradient(0, 0, 8, 0, 0, haloR + 10);
+    hGrad.addColorStop(0, 'rgba(254, 240, 138, 0.55)');
+    hGrad.addColorStop(0.6, 'rgba(234, 179, 8, 0.3)');
+    hGrad.addColorStop(1, 'rgba(234, 179, 8, 0)');
+    ctx.fillStyle = hGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, haloR + 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.rotate(tick * 0.03);
+    ctx.strokeStyle = '#fde047';
+    ctx.shadowColor = '#f59e0b';
+    ctx.shadowBlur = 14;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 38, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 육각 별 마법진
+    for (let t = 0; t < 2; t++) {
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = (t * Math.PI) / 3 + (i * Math.PI * 2) / 3;
+        const px = Math.cos(a) * 36;
+        const py = Math.sin(a) * 36;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    // 회전하는 수학 기호 (π, ∑, ∞, √)
+    const symbols = ['π', '∑', '∞', '√'];
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < 4; i++) {
+      const sa = (i * Math.PI) / 2;
+      ctx.fillText(symbols[i], Math.cos(sa) * 44, Math.sin(sa) * 44);
+    }
+    ctx.restore();
+  }
+
+  // 꾸미기 아이템: 날개 슬롯 (천재의 황금 날개 / 심연의 드래곤 윙 / 사이버 네온 메카 윙 / 프리즘 요정 나비 날개)
+  const wingType = equipped.wing || (equipped.accessory === 'wing_gold' ? 'wing_gold' : null);
+  if (wingType && !isFailing) {
     const flap = isClimbing ? Math.sin(climbProgress * Math.PI * 2) * 0.42 : Math.sin(tick * 0.18) * 0.2;
     ctx.save();
     ctx.translate(-10, -36);
     ctx.rotate(flap);
-    ctx.shadowColor = '#fde047';
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = '#fde047';
-    ctx.strokeStyle = '#ca8a04';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.quadraticCurveTo(-32, -26, -38, -5);
-    ctx.quadraticCurveTo(-26, 4, -31, 11);
-    ctx.quadraticCurveTo(-16, 11, 0, 8);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+
+    if (wingType === 'wing_gold') {
+      ctx.shadowColor = '#fde047';
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = '#fde047';
+      ctx.strokeStyle = '#ca8a04';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(-32, -26, -38, -5);
+      ctx.quadraticCurveTo(-26, 4, -31, 11);
+      ctx.quadraticCurveTo(-16, 11, 0, 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    } else if (wingType === 'wing_demon') {
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = '#18181b';
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, -2);
+      ctx.lineTo(-22, -26);
+      ctx.lineTo(-42, -14);
+      ctx.quadraticCurveTo(-30, -2, -34, 8);
+      ctx.quadraticCurveTo(-20, 4, -18, 14);
+      ctx.quadraticCurveTo(-8, 6, 0, 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    } else if (wingType === 'wing_cyber') {
+      ctx.shadowColor = '#22d3ee';
+      ctx.shadowBlur = 16;
+      const cGrad = ctx.createLinearGradient(0, -20, -40, 10);
+      cGrad.addColorStop(0, '#22d3ee');
+      cGrad.addColorStop(1, '#ec4899');
+      ctx.fillStyle = cGrad;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      for (let b = 0; b < 3; b++) {
+        ctx.save();
+        ctx.rotate(-b * 0.22);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-36 + b * 5, -18 + b * 6);
+        ctx.lineTo(-30 + b * 5, -9 + b * 6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+    } else if (wingType === 'wing_fairy') {
+      ctx.shadowColor = '#f472b6';
+      ctx.shadowBlur = 15;
+      const fGrad = ctx.createLinearGradient(0, -24, -36, 16);
+      fGrad.addColorStop(0, 'rgba(244, 114, 182, 0.9)');
+      fGrad.addColorStop(0.5, 'rgba(167, 243, 208, 0.9)');
+      fGrad.addColorStop(1, 'rgba(192, 132, 252, 0.9)');
+      ctx.fillStyle = fGrad;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(-28, -32, -44, -6, -12, 2);
+      ctx.bezierCurveTo(-36, 8, -24, 26, 0, 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -1222,12 +1582,64 @@ function drawShinYiJun(ctx, x, y, stageIdx, facing, climbProgress, footParity, t
     ctx.fillRect(6, -33, 6, 4);
   }
 
-  // 앞팔 역동적 스윙
+  // 앞팔 역동적 스윙 & 손 무기(hand 슬롯) 렌더링
   ctx.fillStyle = stageIdx === 0 || isFailing ? '#78350f' : stageIdx >= 5 ? '#1e293b' : '#fde68a';
   ctx.save();
   ctx.translate(4, -38);
   ctx.rotate((armSwing * Math.PI) / 180 * 3.5);
   ctx.fillRect(-3, 0, 6, 15);
+
+  if (equipped.hand && !isFailing) {
+    ctx.save();
+    ctx.translate(2, 13);
+    ctx.rotate(-0.45);
+    if (equipped.hand === 'hand_lollipop') {
+      // 막대사탕 스틱
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-1.5, -18, 3, 20);
+      // 무지개 스월 사탕 헤드
+      const lGrad = ctx.createRadialGradient(0, -24, 1, 0, -24, 9);
+      lGrad.addColorStop(0, '#fef08a');
+      lGrad.addColorStop(0.5, '#f43f5e');
+      lGrad.addColorStop(1, '#38bdf8');
+      ctx.fillStyle = lGrad;
+      ctx.beginPath();
+      ctx.arc(0, -24, 8.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    } else if (equipped.hand === 'hand_wand') {
+      // 마법봉 손잡이
+      ctx.fillStyle = '#f472b6';
+      ctx.fillRect(-2, -22, 4, 22);
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(-3, -6, 6, 3);
+      // 꼭대기 황금 스타
+      drawStar5(ctx, 0, -25, 8.5, 3.8, '#fde047', '#f472b6', tick * 0.1);
+    } else if (equipped.hand === 'hand_sword') {
+      // 엑스칼리버 계산기 광선검
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.moveTo(-3, -6);
+      ctx.lineTo(-2, -34);
+      ctx.lineTo(0, -40);
+      ctx.lineTo(2, -34);
+      ctx.lineTo(3, -6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-1, -35, 2, 28);
+      // 황금 크로스 가드
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(-7, -7, 14, 3.5);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-2, -3.5, 4, 6);
+    }
+    ctx.restore();
+  }
   ctx.restore();
 
   // 얼굴 (머리)
@@ -1388,6 +1800,28 @@ function drawShinYiJun(ctx, x, y, stageIdx, facing, climbProgress, footParity, t
     ctx.fill();
   }
 
+  // 꾸미기 아이템: 사이버 천재 스카우터 (aura_visor)
+  if (equipped.accessory === 'aura_visor' && !isFailing) {
+    ctx.save();
+    ctx.shadowColor = '#22d3ee';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = 'rgba(6, 182, 212, 0.78)';
+    ctx.strokeStyle = '#ecfeff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(-12, -67, 26, 8.5, 3);
+    ctx.fill();
+    ctx.stroke();
+
+    // 스카우터 타겟 십자선
+    ctx.strokeStyle = '#fde047';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(7, -62.5, 3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // 꾸미기 아이템: 초신성 네온 왕관 (화려한 보석 왕관 + 전면 공전 별빛!)
   if (equipped.accessory === 'aura_crown' && !isFailing) {
     drawSupernovaCrown(ctx, stageIdx >= 6 ? -100 : -82, tick, isClimbing);
@@ -1402,6 +1836,116 @@ function drawShinYiJun(ctx, x, y, stageIdx, facing, climbProgress, footParity, t
         drawStar4(ctx, ox, oy, 7, 2.2, '#ffffff', starColors[s], -tick * 0.12);
       }
     }
+  }
+
+  // 꾸미기 아이템: 동행 펫 (pet_owl / pet_ufo / pet_dragon)
+  if (equipped.pet && !isFailing) {
+    const petBob = Math.sin(tick * 0.18) * 5;
+    const petX = -32;
+    const petY = -74 + petBob;
+    ctx.save();
+    ctx.translate(petX, petY);
+
+    if (equipped.pet === 'pet_owl') {
+      // 천재 박사 황금 부엉이
+      ctx.shadowColor = '#fde047';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 9, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fef3c7';
+      ctx.beginPath();
+      ctx.ellipse(1, 2, 6, 6.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // 부엉이 눈 & 안경
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(-2.5, -2, 3, 0, Math.PI * 2);
+      ctx.arc(3.5, -2, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(-2, -2, 1.4, 0, Math.PI * 2);
+      ctx.arc(4, -2, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+      // 미니 학사모
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.moveTo(0, -13);
+      ctx.lineTo(9, -9);
+      ctx.lineTo(0, -6);
+      ctx.lineTo(-9, -9);
+      ctx.closePath();
+      ctx.fill();
+    } else if (equipped.pet === 'pet_ufo') {
+      // 외계인 미니 UFO
+      ctx.shadowColor = '#34d399';
+      ctx.shadowBlur = 14;
+      // 하단 트랙터 빔
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.32)';
+      ctx.beginPath();
+      ctx.moveTo(-6, 3);
+      ctx.lineTo(-12, 20);
+      ctx.lineTo(12, 20);
+      ctx.lineTo(6, 3);
+      ctx.closePath();
+      ctx.fill();
+      // 유리 돔
+      ctx.fillStyle = '#67e8f9';
+      ctx.beginPath();
+      ctx.arc(0, -2, 7, Math.PI, 0);
+      ctx.fill();
+      // 비행접시 본체
+      ctx.fillStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.ellipse(0, 1, 13, 4.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fde047';
+      for (let l = -1; l <= 1; l++) {
+        ctx.beginPath();
+        ctx.arc(l * 6, 1, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (equipped.pet === 'pet_dragon') {
+      // 아기 골드 드래곤
+      ctx.shadowColor = '#f97316';
+      ctx.shadowBlur = 12;
+      // 미니 날개
+      const dFlap = Math.sin(tick * 0.35) * 5;
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(-2, -2);
+      ctx.lineTo(-14, -10 + dFlap);
+      ctx.lineTo(-9, 2);
+      ctx.closePath();
+      ctx.fill();
+      // 몸통 & 머리
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
+      ctx.fill();
+      // 뿔
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.moveTo(-3, -7);
+      ctx.lineTo(-6, -14);
+      ctx.lineTo(0, -8);
+      ctx.fill();
+      // 눈
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(3, -2, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      // 미니 브레스 불꽃
+      if (isClimbing || tick % 20 < 10) {
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.arc(12, 1, 3.5 + (tick % 3), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
   }
 
   ctx.restore();
@@ -1427,10 +1971,18 @@ class InfiniteMathStairsGame {
     this.iq = 0; // 문제 1개 맞힐 때마다 +10 상승!
     this.bestStair = Number(localStorage.getItem('2jun_best_stair') || 0);
     this.bestIQ = Number(localStorage.getItem('2jun_best_iq') || 0);
-    this.nickname = (localStorage.getItem('2jun_nickname') || '').trim();
+    this.nickname = this.normalizeNickname(localStorage.getItem('2jun_nickname') || '');
     this.rankingsMap = {};
+    this.onlineServerMap = {};
     this.lastPostedKey = '';
-    this.rankingEndpoint = 'https://ntfy.sh/2junbabo_math_stairs_rank_2026_v1';
+    this.hasUnsyncedBest = false;
+    this.lastPostTime = 0;
+    this.activeFetchPromise = null;
+    this.activeFetchStartTime = 0;
+    this.activeFetchController = null;
+    this.legacyRankingFetched = false;
+    this.rankingEndpoint = 'https://ntfy.sh/2junbabo_math_stairs_rank_2026_v2';
+    this.legacyRankingEndpoint = 'https://ntfy.sh/2junbabo_math_stairs_rank_2026_v1';
 
     const savedInterval = Number(localStorage.getItem('2jun_quiz_interval_v2') || 20);
     this.quizInterval = Math.min(999, Math.max(1, savedInterval || 20));
@@ -1457,9 +2009,13 @@ class InfiniteMathStairsGame {
     this.floatingTexts = [];
     this.afterimages = [];
 
-    // 인게임 버프 타이머 (초)
+    // 인게임 버프 타이머 (초) 및 로켓 점프 상태
     this.slowBuffTimeLeft = 0;
     this.magnetBuffTimeLeft = 0;
+    this.compassBuffTimeLeft = 0;
+    this.jackpotBuffTimeLeft = 0;
+    this.rocketStepsLeft = 0;
+    this.rocketStepTimer = 0;
     this.iqBoosterActive = false;
     this.lastFrameTime = performance.now();
 
@@ -1540,19 +2096,34 @@ class InfiniteMathStairsGame {
       savedInv = null;
     }
 
-    this.inventory = savedInv?.counts || {
+    this.inventory = {
       time_ext: 0,
       slow_stamina: 0,
       math_hint: 0,
       extra_life: 0,
       double_coin: 0,
-      iq_booster: 0
+      iq_booster: 0,
+      direction_guide: 0,
+      rocket_boost: 0,
+      fever_jackpot: 0,
+      quiz_pass: 0,
+      einstein_capsule: 0,
+      ...(savedInv?.counts || {})
     };
     this.unlockedCosmetics = savedInv?.unlocked || {};
-    this.equipped = savedInv?.equipped || {
+    this.equipped = {
       shoe: null,
-      accessory: null
+      wing: null,
+      accessory: null,
+      hand: null,
+      pet: null,
+      stair: null,
+      ...(savedInv?.equipped || {})
     };
+    if (this.equipped.accessory === 'wing_gold') {
+      this.equipped.wing = 'wing_gold';
+      this.equipped.accessory = null;
+    }
   }
 
   savePersistentData() {
@@ -1648,6 +2219,21 @@ class InfiniteMathStairsGame {
     document.getElementById('btn-open-ranking-fail')?.addEventListener('click', () => this.openRankingModal());
     document.getElementById('btn-close-ranking')?.addEventListener('click', () => this.closeRankingModal());
     document.getElementById('btn-refresh-ranking')?.addEventListener('click', () => this.fetchOnlineRankings(true));
+    document.getElementById('btn-refresh-ranking-start')?.addEventListener('click', () => this.fetchOnlineRankings(true));
+    document.getElementById('ranking-sync-badge')?.addEventListener('click', () => this.fetchOnlineRankings(true));
+
+    // 탭 전환/종료 시 아직 서버에 전송되지 않은 최고 기록이 있으면 즉시 전송
+    const flushUnsyncedScore = () => {
+      if (this.nickname && this.hasUnsyncedBest && this.rankingsMap[this.nickname]) {
+        this.postScoreOnline(this.rankingsMap[this.nickname], true);
+      }
+    };
+    window.addEventListener('pagehide', flushUnsyncedScore);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        flushUnsyncedScore();
+      }
+    });
 
     // 옵션 모달 열기/닫기/저장
     const openOpts = () => this.openOptionsModal();
@@ -1675,12 +2261,15 @@ class InfiniteMathStairsGame {
     });
 
     // 인게임 퀵 아이템 버튼
+    document.getElementById('btn-use-rocket')?.addEventListener('click', () => this.useRocketBoostItem());
     document.getElementById('btn-use-slow')?.addEventListener('click', () => this.useSlowStaminaItem());
+    document.getElementById('btn-use-compass')?.addEventListener('click', () => this.useCompassItem());
     document.getElementById('btn-use-magnet')?.addEventListener('click', () => this.useDoubleCoinItem());
 
-    // 퀴즈 내 기능 아이템 버튼 (시간 +30초 / 힌트 보기)
+    // 퀴즈 내 기능 아이템 버튼 (시간 +30초 / 힌트 보기 / 즉시 정답 패스)
     document.getElementById('btn-quiz-add-time')?.addEventListener('click', () => this.useQuizAddTimeItem());
     document.getElementById('btn-quiz-show-hint')?.addEventListener('click', () => this.useQuizHintItem());
+    document.getElementById('btn-quiz-pass')?.addEventListener('click', () => this.useQuizPassItem());
 
     // 프리셋 버튼 클릭 및 직접 입력 동기화
     const presetBtns = document.querySelectorAll('#interval-presets .preset-btn');
@@ -1855,6 +2444,14 @@ class InfiniteMathStairsGame {
   }
 
   // ==================== 닉네임 & 실시간 랭킹 시스템 ====================
+  normalizeNickname(raw) {
+    return String(raw || '')
+      .normalize('NFC')
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      .trim()
+      .slice(0, 12);
+  }
+
   loadLocalRankings() {
     let saved = null;
     try {
@@ -1862,7 +2459,23 @@ class InfiniteMathStairsGame {
     } catch (_) {
       saved = null;
     }
-    this.rankingsMap = saved && typeof saved === 'object' ? saved : {};
+    this.rankingsMap = {};
+    if (saved && typeof saved === 'object') {
+      Object.values(saved).forEach((item) => {
+        if (!item || typeof item.nick !== 'string') return;
+        const cNick = this.normalizeNickname(item.nick);
+        if (!cNick) return;
+        const prev = this.rankingsMap[cNick];
+        const s = Math.max(prev?.stair || 0, Math.floor(Number(item.stair) || 0));
+        const q = Math.max(prev?.iq || 0, Math.floor(Number(item.iq) || 0));
+        this.rankingsMap[cNick] = {
+          nick: cNick,
+          stair: s,
+          iq: q,
+          updatedAt: Number(item.updatedAt) || Date.now()
+        };
+      });
+    }
 
     if (this.nickname) {
       const existing = this.rankingsMap[this.nickname];
@@ -1916,8 +2529,8 @@ class InfiniteMathStairsGame {
   }
 
   saveNicknameModal() {
-    const raw = (this.elNicknameInput?.value || '').trim();
-    if (!raw) {
+    const cleanNick = this.normalizeNickname(this.elNicknameInput?.value || '');
+    if (!cleanNick) {
       if (this.elNicknameError) {
         this.elNicknameError.textContent = '닉네임을 1글자 이상 입력해주세요!';
         this.elNicknameError.classList.remove('hidden');
@@ -1926,7 +2539,6 @@ class InfiniteMathStairsGame {
       return;
     }
 
-    const cleanNick = raw.slice(0, 12);
     const wasFirstRegistration = !this.nickname;
     const isSameNick = this.nickname === cleanNick;
 
@@ -1952,18 +2564,20 @@ class InfiniteMathStairsGame {
     localStorage.setItem('2jun_best_iq', String(this.bestIQ));
     if (this.elBestCount) this.elBestCount.textContent = this.bestStair;
 
+    this.hasUnsyncedBest = true;
     this.updateRankingEntry(this.nickname, this.bestStair, this.bestIQ, true);
     this.elNicknameModal?.classList.remove('active');
     this.updateHUD();
+    this.fetchOnlineRankings(false);
   }
 
   updateRankingEntry(nick, stair, iq, pushOnline = false) {
-    const cleanNick = (nick || '').trim();
+    const cleanNick = this.normalizeNickname(nick);
     if (!cleanNick) return;
 
     const prev = this.rankingsMap[cleanNick];
-    const nextStair = Math.max(prev?.stair || 0, Number(stair) || 0);
-    const nextIQ = Math.max(prev?.iq || 0, Number(iq) || 0);
+    const nextStair = Math.max(prev?.stair || 0, Math.floor(Number(stair) || 0));
+    const nextIQ = Math.max(prev?.iq || 0, Math.floor(Number(iq) || 0));
     const isImproved =
       !prev ||
       nextStair > (prev.stair || 0) ||
@@ -1982,107 +2596,489 @@ class InfiniteMathStairsGame {
       localStorage.setItem('2jun_best_stair', String(this.bestStair));
       localStorage.setItem('2jun_best_iq', String(this.bestIQ));
       if (this.elBestCount) this.elBestCount.textContent = this.bestStair;
+      if (isImproved) {
+        this.hasUnsyncedBest = true;
+      }
     }
 
     this.saveLocalRankings();
     this.renderRankingBoards();
 
-    if ((pushOnline || isImproved) && nextStair > 0) {
-      this.postScoreOnline(this.rankingsMap[cleanNick]);
+    // 계단 오르는 도중 매 스텝마다 네트워크 요청이 폭주(429 차단/스톨)하지 않도록 pushOnline이 명시된 시점에만 전송
+    if (pushOnline) {
+      this.postScoreOnline(this.rankingsMap[cleanNick], true);
     }
   }
 
-  async postScoreOnline(entry) {
-    if (!entry || !entry.nick || entry.stair <= 0) return;
-    const postKey = `${entry.nick}:${entry.stair}:${entry.iq}`;
-    if (this.lastPostedKey === postKey) return;
-    this.lastPostedKey = postKey;
+  async postScoreOnline(entry, force = false) {
+    if (!entry || !entry.nick) return false;
+    const cleanNick = this.normalizeNickname(entry.nick);
+    if (!cleanNick) return false;
+
+    const stair = Math.max(0, Math.floor(Number(entry.stair) || 0));
+    const iq = Math.max(0, Math.floor(Number(entry.iq) || 0));
+    if (stair <= 0 && !force) return false;
+
+    // 현재 클라이언트가 보유한 상위 35명 랭킹 스냅샷을 함께 동봉하여 특정 사용자 누락 및 12시간 캐시 만료 방지
+    const topSnapshot = this.getSortedRankings()
+      .filter((r) => r && r.nick && (r.stair > 0 || r.nick === cleanNick))
+      .slice(0, 35)
+      .map((r) => [
+        this.normalizeNickname(r.nick),
+        Math.max(0, Math.floor(Number(r.stair) || 0)),
+        Math.max(0, Math.floor(Number(r.iq) || 0))
+      ]);
+
+    const postKey = `${cleanNick}:${stair}:${iq}:${topSnapshot.length}`;
+    if (!force && this.lastPostedKey === postKey) return true;
+
+    const payload = JSON.stringify({
+      t: 'rank',
+      nick: cleanNick,
+      stair,
+      iq,
+      ts: entry.updatedAt || Date.now(),
+      top: topSnapshot
+    });
+
+    const postToUrl = async (url) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => {
+        try {
+          controller.abort();
+        } catch (_) {}
+      }, 4000);
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain;charset=UTF-8'
+          },
+          cache: 'no-store',
+          keepalive: true,
+          signal: controller.signal,
+          body: payload
+        });
+        clearTimeout(timer);
+        return Boolean(res && res.ok);
+      } catch (_) {
+        clearTimeout(timer);
+        return false;
+      }
+    };
+
+    const okPrimary = await postToUrl(this.rankingEndpoint);
+    if (okPrimary) {
+      this.lastPostedKey = postKey;
+      this.hasUnsyncedBest = false;
+      this.lastPostTime = Date.now();
+      this.onlineServerMap[cleanNick] = {
+        nick: cleanNick,
+        stair: Math.max(this.onlineServerMap[cleanNick]?.stair || 0, stair),
+        iq: Math.max(this.onlineServerMap[cleanNick]?.iq || 0, iq),
+        updatedAt: entry.updatedAt || Date.now()
+      };
+      if (this.legacyRankingEndpoint) {
+        postToUrl(this.legacyRankingEndpoint);
+      }
+      return true;
+    }
+
+    if (this.legacyRankingEndpoint) {
+      const okLegacy = await postToUrl(this.legacyRankingEndpoint);
+      if (okLegacy) {
+        this.lastPostedKey = postKey;
+        this.hasUnsyncedBest = false;
+        this.lastPostTime = Date.now();
+        this.onlineServerMap[cleanNick] = {
+          nick: cleanNick,
+          stair: Math.max(this.onlineServerMap[cleanNick]?.stair || 0, stair),
+          iq: Math.max(this.onlineServerMap[cleanNick]?.iq || 0, iq),
+          updatedAt: entry.updatedAt || Date.now()
+        };
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  mergeIncomingRankRecord(rawNick, rawStair, rawIQ, rawTs, targetServerMap = null) {
+    const rNick = this.normalizeNickname(rawNick);
+    if (!rNick) return;
+    const rStair = Math.max(0, Math.floor(Number(rawStair) || 0));
+    const rIQ = Math.max(0, Math.floor(Number(rawIQ) || 0));
+    const rTs = Number(rawTs) || Date.now();
+
+    if (targetServerMap) {
+      const prevOnline = targetServerMap[rNick];
+      if (
+        !prevOnline ||
+        rStair > (prevOnline.stair || 0) ||
+        (rStair === (prevOnline.stair || 0) && rIQ > (prevOnline.iq || 0))
+      ) {
+        targetServerMap[rNick] = {
+          nick: rNick,
+          stair: Math.max(prevOnline?.stair || 0, rStair),
+          iq: Math.max(prevOnline?.iq || 0, rIQ),
+          updatedAt: rTs
+        };
+      }
+    }
+
+    const prevServer = this.onlineServerMap[rNick];
+    if (
+      !prevServer ||
+      rStair > (prevServer.stair || 0) ||
+      (rStair === (prevServer.stair || 0) && rIQ > (prevServer.iq || 0))
+    ) {
+      this.onlineServerMap[rNick] = {
+        nick: rNick,
+        stair: Math.max(prevServer?.stair || 0, rStair),
+        iq: Math.max(prevServer?.iq || 0, rIQ),
+        updatedAt: rTs
+      };
+    }
+
+    const prev = this.rankingsMap[rNick];
+    if (
+      !prev ||
+      rStair > (prev.stair || 0) ||
+      (rStair === (prev.stair || 0) && rIQ > (prev.iq || 0))
+    ) {
+      this.rankingsMap[rNick] = {
+        nick: rNick,
+        stair: Math.max(prev?.stair || 0, rStair),
+        iq: Math.max(prev?.iq || 0, rIQ),
+        updatedAt: rTs
+      };
+    }
+  }
+
+  parseNdjsonRankingText(text, targetServerMap = null) {
+    if (!text) return 0;
+    let parsedCount = 0;
+    const lines = text.split('\n');
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      try {
+        const evt = JSON.parse(trimmed);
+        if (evt && evt.event === 'message' && evt.message) {
+          const data = JSON.parse(evt.message);
+          if (!data || typeof data !== 'object') return;
+          const msgTs = Number(data.ts) || (evt.time ? evt.time * 1000 : Date.now());
+
+          if (typeof data.nick === 'string' && data.nick.trim()) {
+            this.mergeIncomingRankRecord(data.nick, data.stair, data.iq, msgTs, targetServerMap);
+            parsedCount++;
+          }
+
+          if (Array.isArray(data.top)) {
+            data.top.forEach((item) => {
+              if (Array.isArray(item) && item.length >= 2) {
+                this.mergeIncomingRankRecord(item[0], item[1], item[2] || 0, msgTs, targetServerMap);
+                parsedCount++;
+              } else if (item && typeof item === 'object') {
+                this.mergeIncomingRankRecord(
+                  item.n || item.nick,
+                  item.s ?? item.stair,
+                  item.q ?? item.iq,
+                  item.u || msgTs,
+                  targetServerMap
+                );
+                parsedCount++;
+              }
+            });
+          }
+        }
+      } catch (_) {}
+    });
+    return parsedCount;
+  }
+
+  // 스트림이 닫히지 않거나 네트워크 지연 시에도 '갱신중'에서 절대 멈추지 않도록 타임아웃 + 유휴(idle) 청크 리더 적용
+  async fetchNdjsonWithTimeout(url, totalTimeoutMs = 4200, idleTimeoutMs = 650) {
+    const controller = new AbortController();
+    this.activeFetchController = controller;
+    let totalTimer = null;
+    let idleTimer = null;
+
+    const clearTimers = () => {
+      if (totalTimer) clearTimeout(totalTimer);
+      if (idleTimer) clearTimeout(idleTimer);
+    };
 
     try {
-      await fetch(this.rankingEndpoint, {
-        method: 'POST',
-        body: JSON.stringify({
-          t: 'rank',
-          nick: entry.nick,
-          stair: entry.stair,
-          iq: entry.iq,
-          ts: entry.updatedAt || Date.now()
-        })
+      const fetchPromise = fetch(url, {
+        method: 'GET',
+        cache: 'no-store',
+        signal: controller.signal
       });
+
+      const timeoutPromise = new Promise((_, reject) => {
+        totalTimer = setTimeout(() => {
+          try {
+            controller.abort();
+          } catch (_) {}
+          reject(new Error('FETCH_TIMEOUT'));
+        }, totalTimeoutMs);
+      });
+
+      const res = await Promise.race([fetchPromise, timeoutPromise]);
+      if (!res || !res.ok) {
+        clearTimers();
+        return { ok: false, status: res ? res.status : 0, text: '' };
+      }
+
+      if (res.body && typeof res.body.getReader === 'function') {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let text = '';
+
+        while (true) {
+          const readResult = await Promise.race([
+            reader.read(),
+            new Promise((resolve) => {
+              if (idleTimer) clearTimeout(idleTimer);
+              const waitMs = text.length > 0 ? idleTimeoutMs : totalTimeoutMs;
+              idleTimer = setTimeout(
+                () => resolve({ done: true, value: undefined, idleTimedOut: true }),
+                waitMs
+              );
+            })
+          ]);
+
+          if (readResult.idleTimedOut) {
+            try {
+              reader.cancel();
+            } catch (_) {}
+            break;
+          }
+
+          if (readResult.value) {
+            text += decoder.decode(readResult.value, { stream: true });
+          }
+
+          if (readResult.done) {
+            text += decoder.decode();
+            break;
+          }
+        }
+
+        clearTimers();
+        return { ok: true, status: res.status, text };
+      }
+
+      const text = await Promise.race([
+        res.text(),
+        new Promise((_, reject) => {
+          idleTimer = setTimeout(() => reject(new Error('TEXT_TIMEOUT')), totalTimeoutMs);
+        })
+      ]);
+      clearTimers();
+      return { ok: true, status: res.status, text };
     } catch (_) {
-      // 오프라인 또는 네트워크 제한 시 로컬 랭킹 유지
+      clearTimers();
+      try {
+        controller.abort();
+      } catch (_) {}
+      return { ok: false, status: 0, text: '' };
     }
   }
 
   async fetchOnlineRankings(showFeedback = false) {
     const syncBadge = document.getElementById('ranking-sync-badge');
     const refreshBtn = document.getElementById('btn-refresh-ranking');
-    if (showFeedback && refreshBtn) {
-      refreshBtn.textContent = '⏳ 갱신중...';
-    }
-    if (syncBadge) {
-      syncBadge.textContent = '동기화중';
-    }
+    const refreshStartBtn = document.getElementById('btn-refresh-ranking-start');
 
-    try {
-      const res = await fetch(`${this.rankingEndpoint}/json?poll=1&since=all`);
-      if (res.ok) {
-        const text = await res.text();
-        const lines = text.split('\n');
-        lines.forEach((line) => {
-          const trimmed = line.trim();
-          if (!trimmed) return;
+    const setRefreshingUI = () => {
+      if (showFeedback) {
+        if (refreshBtn) {
+          refreshBtn.textContent = '⏳ 갱신중...';
+          refreshBtn.disabled = true;
+        }
+        if (refreshStartBtn) {
+          refreshStartBtn.textContent = '⏳ 갱신중';
+          refreshStartBtn.disabled = true;
+        }
+      }
+      if (syncBadge) {
+        syncBadge.textContent = '동기화중';
+        syncBadge.classList.add('syncing');
+        syncBadge.classList.remove('offline');
+      }
+    };
+
+    const resetRefreshButtonsUI = (wasManual, succeeded) => {
+      if (wasManual) {
+        const doneLabelModal = succeeded ? '✅ 갱신완료' : '🔄 새로고침';
+        const doneLabelStart = succeeded ? '✅ 완료' : '🔄 갱신';
+        if (refreshBtn) {
+          refreshBtn.textContent = doneLabelModal;
+          refreshBtn.disabled = false;
+        }
+        if (refreshStartBtn) {
+          refreshStartBtn.textContent = doneLabelStart;
+          refreshStartBtn.disabled = false;
+        }
+        if (succeeded) {
+          if (this.refreshBtnResetTimer) clearTimeout(this.refreshBtnResetTimer);
+          this.refreshBtnResetTimer = setTimeout(() => {
+            if (refreshBtn) refreshBtn.textContent = '🔄 새로고침';
+            if (refreshStartBtn) refreshStartBtn.textContent = '🔄 갱신';
+          }, 850);
+        }
+      } else {
+        if (refreshBtn) {
+          refreshBtn.textContent = '🔄 새로고침';
+          refreshBtn.disabled = false;
+        }
+        if (refreshStartBtn) {
+          refreshStartBtn.textContent = '🔄 갱신';
+          refreshStartBtn.disabled = false;
+        }
+      }
+    };
+
+    // 이미 진행 중인 요청이 있을 때: 오래 걸렸으면 중단 후 재시작하고, 방금 시작된 요청이면 결과를 함께 공유
+    if (this.activeFetchPromise) {
+      if (showFeedback) {
+        setRefreshingUI();
+        if (Date.now() - this.activeFetchStartTime > 2000 && this.activeFetchController) {
           try {
-            const evt = JSON.parse(trimmed);
-            if (evt && evt.event === 'message' && evt.message) {
-              const data = JSON.parse(evt.message);
-              if (data && typeof data.nick === 'string' && data.nick.trim()) {
-                const rNick = data.nick.trim().slice(0, 12);
-                const rStair = Math.max(0, Math.floor(Number(data.stair) || 0));
-                const rIQ = Math.max(0, Math.floor(Number(data.iq) || 0));
-                const prev = this.rankingsMap[rNick];
-                if (
-                  !prev ||
-                  rStair > (prev.stair || 0) ||
-                  (rStair === (prev.stair || 0) && rIQ > (prev.iq || 0))
-                ) {
-                  this.rankingsMap[rNick] = {
-                    nick: rNick,
-                    stair: Math.max(prev?.stair || 0, rStair),
-                    iq: Math.max(prev?.iq || 0, rIQ),
-                    updatedAt: Number(data.ts) || (evt.time ? evt.time * 1000 : Date.now())
-                  };
-                }
-              }
-            }
+            this.activeFetchController.abort();
           } catch (_) {}
-        });
+          this.activeFetchPromise = null;
+        } else {
+          try {
+            await this.activeFetchPromise;
+          } finally {
+            resetRefreshButtonsUI(true, true);
+          }
+          return;
+        }
+      } else {
+        return this.activeFetchPromise;
+      }
+    }
 
-        // 내 닉네임의 온라인 기록과 로컬 기록 동기화
-        if (this.nickname && this.rankingsMap[this.nickname]) {
-          const myRec = this.rankingsMap[this.nickname];
-          if (myRec.stair > this.bestStair || myRec.iq > this.bestIQ) {
-            this.bestStair = Math.max(this.bestStair, myRec.stair);
-            this.bestIQ = Math.max(this.bestIQ, myRec.iq);
+    setRefreshingUI();
+    this.activeFetchStartTime = Date.now();
+
+    const runFetch = async () => {
+      let anySuccess = false;
+      const v2ServerMap = {};
+
+      try {
+        const cacheBuster = Date.now();
+        // 1) 신규 클린 채널(v2) 조회
+        const resV2 = await this.fetchNdjsonWithTimeout(
+          `${this.rankingEndpoint}/json?poll=1&since=all&_t=${cacheBuster}`,
+          4000,
+          650
+        );
+        if (resV2.ok) {
+          anySuccess = true;
+          this.parseNdjsonRankingText(resV2.text, v2ServerMap);
+        }
+
+        // 2) 기존 채널(v1) 기록도 첫 동기화 시 또는 v2에 기록이 적을 때 병합하여 기존 도전자 전원 보존
+        const needLegacyCheck =
+          !this.legacyRankingFetched || Object.keys(v2ServerMap).length < 2 || !resV2.ok;
+        if (needLegacyCheck && this.legacyRankingEndpoint) {
+          const resV1 = await this.fetchNdjsonWithTimeout(
+            `${this.legacyRankingEndpoint}/json?poll=1&since=all&_t=${cacheBuster}`,
+            3500,
+            600
+          );
+          if (resV1.ok) {
+            anySuccess = true;
+            this.legacyRankingFetched = true;
+            this.parseNdjsonRankingText(resV1.text, null);
+          }
+        }
+
+        // 3) 내 로컬 최고 기록과 온라인 서버 기록 양방향 동기화 (서버에 내 기록이 없거나 낮으면 즉시 재전송!)
+        if (this.nickname) {
+          const myLocalRec = this.rankingsMap[this.nickname];
+          const myOnlineRec = this.onlineServerMap[this.nickname];
+          const myV2Rec = v2ServerMap[this.nickname];
+
+          if (
+            myOnlineRec &&
+            (myOnlineRec.stair > this.bestStair ||
+              (myOnlineRec.stair === this.bestStair && myOnlineRec.iq > this.bestIQ))
+          ) {
+            this.bestStair = Math.max(this.bestStair, myOnlineRec.stair);
+            this.bestIQ = Math.max(this.bestIQ, myOnlineRec.iq);
             localStorage.setItem('2jun_best_stair', String(this.bestStair));
             localStorage.setItem('2jun_best_iq', String(this.bestIQ));
             if (this.elBestCount) this.elBestCount.textContent = this.bestStair;
-          } else if (this.bestStair > myRec.stair) {
-            myRec.stair = this.bestStair;
-            myRec.iq = Math.max(myRec.iq, this.bestIQ);
-            this.postScoreOnline(myRec);
+          }
+
+          if (myLocalRec) {
+            myLocalRec.stair = Math.max(myLocalRec.stair || 0, this.bestStair);
+            myLocalRec.iq = Math.max(myLocalRec.iq || 0, this.bestIQ);
+          }
+
+          const isMissingOrHigherThanV2 =
+            !myV2Rec ||
+            this.bestStair > (myV2Rec.stair || 0) ||
+            (this.bestStair === (myV2Rec.stair || 0) && this.bestIQ > (myV2Rec.iq || 0));
+
+          const hasOtherUnsyncedRecordsForV2 = Object.values(this.rankingsMap).some(
+            (r) =>
+              r &&
+              r.nick &&
+              r.stair > 0 &&
+              (!v2ServerMap[r.nick] || r.stair > (v2ServerMap[r.nick].stair || 0))
+          );
+
+          if (
+            myLocalRec &&
+            (this.hasUnsyncedBest ||
+              (isMissingOrHigherThanV2 && (this.bestStair > 0 || showFeedback)) ||
+              hasOtherUnsyncedRecordsForV2)
+          ) {
+            const posted = await this.postScoreOnline(myLocalRec, true);
+            if (posted) anySuccess = true;
           }
         }
 
         this.saveLocalRankings();
         this.renderRankingBoards();
-        if (syncBadge) syncBadge.textContent = '실시간 연동됨';
+
+        if (syncBadge) {
+          syncBadge.classList.remove('syncing');
+          if (anySuccess) {
+            syncBadge.textContent = '실시간 연동됨';
+            syncBadge.classList.remove('offline');
+          } else {
+            syncBadge.textContent = '로컬 저장됨';
+            syncBadge.classList.add('offline');
+          }
+        }
+      } catch (_) {
+        if (syncBadge) {
+          syncBadge.textContent = '로컬 저장됨';
+          syncBadge.classList.remove('syncing');
+          syncBadge.classList.add('offline');
+        }
+      } finally {
+        this.saveLocalRankings();
+        this.renderRankingBoards();
+        resetRefreshButtonsUI(showFeedback, anySuccess);
       }
-    } catch (_) {
-      if (syncBadge) syncBadge.textContent = '로컬 저장됨';
+    };
+
+    const p = runFetch();
+    this.activeFetchPromise = p;
+    try {
+      await p;
     } finally {
-      if (showFeedback && refreshBtn) {
-        refreshBtn.textContent = '🔄 새로고침';
+      if (this.activeFetchPromise === p) {
+        this.activeFetchPromise = null;
       }
     }
   }
@@ -2281,11 +3277,13 @@ class InfiniteMathStairsGame {
           btnText = isEquipped ? '✓ 장착중 (해제)' : '장착하기';
         }
 
+        const slotLabel = SHOP_SLOT_LABELS[item.slot] || '꾸미기';
         row.innerHTML = `
           <div class="shop-item-icon">${item.icon}</div>
           <div class="shop-item-info">
             <div class="shop-item-title">
               <span>${item.name}</span>
+              <span class="shop-slot-tag">${slotLabel}</span>
               <span class="shop-owned-badge">${isUnlocked ? '영구보유' : '미보유'}</span>
             </div>
             <div class="shop-item-desc">${item.desc}</div>
@@ -2345,6 +3343,45 @@ class InfiniteMathStairsGame {
   }
 
   // 인게임 기능 아이템 사용
+  useRocketBoostItem() {
+    if (this.state !== 'PLAYING' || this.rocketStepsLeft > 0) return;
+    if ((this.inventory.rocket_boost || 0) <= 0) {
+      if (this.coins >= 15) {
+        this.coins -= 15;
+      } else {
+        this.showBanner('🚀 로켓 부스터 부족!', '상점에서 구매하거나 15코인이 필요합니다.', 2000);
+        return;
+      }
+    } else {
+      this.inventory.rocket_boost--;
+    }
+    this.rocketStepsLeft = 50;
+    this.rocketStepTimer = 0;
+    this.savePersistentData();
+    sfx.evolve();
+    this.showBanner('🚀 초고속 로켓 부스터 발동!', '50계단을 자동으로 초고속 돌파합니다!', 2200);
+    this.updateHUD();
+  }
+
+  useCompassItem() {
+    if (this.state !== 'PLAYING') return;
+    if ((this.inventory.direction_guide || 0) <= 0) {
+      if (this.coins >= 12) {
+        this.coins -= 12;
+      } else {
+        this.showBanner('🧭 방향 나침반 부족!', '상점에서 구매하거나 12코인이 필요합니다.', 2000);
+        return;
+      }
+    } else {
+      this.inventory.direction_guide--;
+    }
+    this.compassBuffTimeLeft = 60;
+    this.savePersistentData();
+    sfx.buy();
+    this.showBanner('🧭 천재의 방향 나침반 발동!', '1분간 다음 계단에 눌러야 할 버튼을 안내합니다!', 2200);
+    this.updateHUD();
+  }
+
   useSlowStaminaItem() {
     if (this.state !== 'PLAYING') return;
     if ((this.inventory.slow_stamina || 0) <= 0) {
@@ -2367,10 +3404,10 @@ class InfiniteMathStairsGame {
   useDoubleCoinItem() {
     if (this.state !== 'PLAYING') return;
     if ((this.inventory.double_coin || 0) <= 0) {
-      if (this.coins >= 15) {
-        this.coins -= 15;
+      if (this.coins >= 10) {
+        this.coins -= 10;
       } else {
-        this.showBanner('🧲 황금 자석 부족!', '상점에서 구매하거나 15코인이 필요합니다.', 2000);
+        this.showBanner('🧲 황금 자석 부족!', '상점에서 구매하거나 10코인이 필요합니다.', 2000);
         return;
       }
     } else {
@@ -2434,13 +3471,34 @@ class InfiniteMathStairsGame {
     this.updateHUD();
   }
 
+  useQuizPassItem() {
+    if (this.state !== 'QUIZ' || !this.activeQuiz) return;
+    if ((this.inventory.quiz_pass || 0) > 0) {
+      this.inventory.quiz_pass--;
+    } else if (this.coins >= 35) {
+      this.coins -= 35;
+    } else {
+      alert('수학문제 프리패스권이 없고 코인(35코인)도 부족합니다!');
+      return;
+    }
+    this.savePersistentData();
+    sfx.buy();
+    this.quizUnlockTime = 0;
+    this.checkQuizAnswer(this.activeQuiz.answer);
+  }
+
   updateQuizItemButtons() {
     const timeCount = this.inventory.time_ext || 0;
     const hintCount = this.inventory.math_hint || 0;
+    const passCount = this.inventory.quiz_pass || 0;
     document.getElementById('quiz-time-item-count').textContent =
       timeCount > 0 ? `(보유: ${timeCount})` : `(즉시구매 🪙10)`;
     document.getElementById('quiz-hint-item-count').textContent =
       hintCount > 0 ? `(보유: ${hintCount})` : `(즉시구매 🪙5)`;
+    const passEl = document.getElementById('quiz-pass-item-count');
+    if (passEl) {
+      passEl.textContent = passCount > 0 ? `(보유: ${passCount})` : `(즉시구매 🪙35)`;
+    }
   }
 
   getStageIndex(iq = this.iq) {
@@ -2541,6 +3599,8 @@ class InfiniteMathStairsGame {
     this.fallYOffset = 0;
     this.fallVelocity = 0;
     this.speedCombo = 0;
+    this.rocketStepsLeft = 0;
+    this.rocketStepTimer = 0;
     this.particles = [];
     this.rainbowTrails = [];
     this.stairEffects = [];
@@ -2590,7 +3650,11 @@ class InfiniteMathStairsGame {
     // 보유 생명 및 퀵 슬롯 수량 업데이트
     const lives = this.inventory.extra_life || 0;
     this.elLifeBadge.textContent = `❤️ x${lives}`;
+    const rocketCountEl = document.getElementById('quick-rocket-count');
+    if (rocketCountEl) rocketCountEl.textContent = this.inventory.rocket_boost || 0;
     document.getElementById('quick-slow-count').textContent = this.inventory.slow_stamina || 0;
+    const compassCountEl = document.getElementById('quick-compass-count');
+    if (compassCountEl) compassCountEl.textContent = this.inventory.direction_guide || 0;
     document.getElementById('quick-magnet-count').textContent = this.inventory.double_coin || 0;
     document.getElementById('quick-life-count').textContent = lives;
 
@@ -2602,13 +3666,30 @@ class InfiniteMathStairsGame {
       tag.textContent = `🐢 슬로우 ${Math.ceil(this.slowBuffTimeLeft)}s`;
       this.elActiveBuffs.appendChild(tag);
     }
+    if (this.compassBuffTimeLeft > 0) {
+      const tag = document.createElement('span');
+      tag.className = 'buff-tag';
+      tag.textContent = `🧭 나침반 ${Math.ceil(this.compassBuffTimeLeft)}s`;
+      this.elActiveBuffs.appendChild(tag);
+    }
     if (this.magnetBuffTimeLeft > 0) {
       const tag = document.createElement('span');
       tag.className = 'buff-tag';
       tag.textContent = `🧲 2배코인 ${Math.ceil(this.magnetBuffTimeLeft)}s`;
       this.elActiveBuffs.appendChild(tag);
     }
-    if ((this.inventory.iq_booster || 0) > 0 || this.iqBoosterActive) {
+    if (this.jackpotBuffTimeLeft > 0) {
+      const tag = document.createElement('span');
+      tag.className = 'buff-tag';
+      tag.textContent = `💎 잭팟 ${Math.ceil(this.jackpotBuffTimeLeft)}s`;
+      this.elActiveBuffs.appendChild(tag);
+    }
+    if ((this.inventory.einstein_capsule || 0) > 0) {
+      const tag = document.createElement('span');
+      tag.className = 'buff-tag';
+      tag.textContent = `🧠 IQ +30 대기중`;
+      this.elActiveBuffs.appendChild(tag);
+    } else if ((this.inventory.iq_booster || 0) > 0 || this.iqBoosterActive) {
       const tag = document.createElement('span');
       tag.className = 'buff-tag';
       tag.textContent = `🧪 IQ +20 대기중`;
@@ -2863,6 +3944,113 @@ class InfiniteMathStairsGame {
           type: i % 2 === 0 ? 'star4' : 'star5'
         });
       }
+    } else if (shoe === 'shoe_ice') {
+      this.stairEffects.push({
+        type: 'ice_pillar',
+        x: worldX,
+        y: worldY,
+        alpha: 1.0,
+        progress: 0,
+        decay: 0.032
+      });
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY,
+        radius: 8,
+        maxRadius: 60,
+        color: '#38bdf8',
+        glow: '#bae6fd',
+        lineWidth: 4,
+        alpha: 0.95
+      });
+      for (let i = 0; i < 20; i++) {
+        this.particles.push({
+          x: worldX + randInt(-24, 24),
+          y: worldY + randInt(-12, 4),
+          vx: (Math.random() - 0.5) * 4.8,
+          vy: -1.6 - Math.random() * 4.5,
+          size: 5.5 + Math.random() * 5.5,
+          color: ['#e0f2fe', '#7dd3fc', '#38bdf8', '#ffffff'][i % 4],
+          glow: '#38bdf8',
+          rot: Math.random() * Math.PI,
+          vRot: (Math.random() - 0.5) * 0.2,
+          alpha: 1,
+          decay: 0.03,
+          type: 'star4'
+        });
+      }
+    } else if (shoe === 'shoe_galaxy') {
+      this.stairEffects.push({
+        type: 'galaxy_vortex',
+        x: worldX,
+        y: worldY,
+        alpha: 1.0,
+        progress: 0,
+        decay: 0.03
+      });
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY,
+        radius: 8,
+        maxRadius: 64,
+        color: '#c084fc',
+        glow: '#e879f9',
+        lineWidth: 4,
+        alpha: 0.95
+      });
+      for (let i = 0; i < 22; i++) {
+        const ang = (Math.PI * 2 * i) / 22;
+        const spd = 2 + Math.random() * 4.5;
+        this.particles.push({
+          x: worldX + randInt(-20, 20),
+          y: worldY + randInt(-10, 4),
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 1.5,
+          size: 6 + Math.random() * 5,
+          color: ['#c084fc', '#f472b6', '#818cf8', '#fde047'][i % 4],
+          glow: '#a855f7',
+          rot: Math.random() * Math.PI,
+          vRot: 0.18,
+          alpha: 1,
+          decay: 0.028,
+          type: i % 2 === 0 ? 'star5' : 'star4'
+        });
+      }
+    } else if (shoe === 'shoe_cyber') {
+      this.stairEffects.push({
+        type: 'cyber_jet',
+        x: worldX,
+        y: worldY,
+        alpha: 1.0,
+        progress: 0,
+        decay: 0.035
+      });
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY,
+        radius: 6,
+        maxRadius: 62,
+        color: '#22d3ee',
+        glow: '#f43f5e',
+        lineWidth: 4,
+        alpha: 0.95
+      });
+      for (let i = 0; i < 20; i++) {
+        this.particles.push({
+          x: worldX + randInt(-22, 22),
+          y: worldY + randInt(-8, 4),
+          vx: (Math.random() - 0.5) * 5,
+          vy: -2 - Math.random() * 5,
+          size: 5 + Math.random() * 5,
+          color: ['#22d3ee', '#f43f5e', '#a5f3fc', '#fde047'][i % 4],
+          glow: '#22d3ee',
+          rot: Math.random() * Math.PI,
+          vRot: 0.25,
+          alpha: 1,
+          decay: 0.035,
+          type: i % 2 === 0 ? 'crown_gem' : 'spark'
+        });
+      }
     } else {
       // 기본 발구름 먼지
       for (let i = 0; i < 4; i++) {
@@ -2939,15 +4127,23 @@ class InfiniteMathStairsGame {
       }
     }
 
-    // 4) 황금 날개(wing_gold) 장착 시 황금 깃털 & 천상의 파동
-    if (this.equipped.accessory === 'wing_gold') {
+    // 4) 날개(wing 슬롯) 및 수학신 후광, 손 무기, 동행 펫 스텝 이펙트
+    const activeWing = this.equipped.wing || (this.equipped.accessory === 'wing_gold' ? 'wing_gold' : null);
+    if (activeWing) {
+      const wingCols = {
+        wing_gold: ['#fde047', '#fef08a'],
+        wing_demon: ['#ef4444', '#7f1d1d'],
+        wing_cyber: ['#22d3ee', '#ec4899'],
+        wing_fairy: ['#f472b6', '#a7f3d0']
+      }[activeWing] || ['#fde047', '#fef08a'];
+
       this.shockwaves.push({
         x: worldX,
         y: worldY - 32,
         radius: 6,
         maxRadius: 48,
-        color: '#fde047',
-        glow: '#fef08a',
+        color: wingCols[0],
+        glow: wingCols[1],
         lineWidth: 3,
         alpha: 0.85
       });
@@ -2958,13 +4154,63 @@ class InfiniteMathStairsGame {
           vx: -this.playerFacing * (1.2 + Math.random() * 3) + (Math.random() - 0.5) * 2,
           vy: -1.0 + Math.random() * 2.5,
           size: 6 + Math.random() * 4,
-          color: i % 2 === 0 ? '#fde047' : '#fef08a',
-          glow: '#facc15',
+          color: wingCols[i % 2],
+          glow: wingCols[0],
           rot: Math.random() * Math.PI,
-          vRot: (Math.random() - 0.5) * 0.12,
+          vRot: (Math.random() - 0.5) * 0.14,
           alpha: 1,
-          decay: 0.026,
-          type: 'feather'
+          decay: 0.028,
+          type: activeWing === 'wing_cyber' ? 'crown_gem' : 'feather'
+        });
+      }
+    }
+
+    if (this.equipped.accessory === 'aura_math_god') {
+      this.stairEffects.push({
+        type: 'math_god_circle',
+        x: worldX,
+        y: worldY,
+        alpha: 1.0,
+        progress: 0,
+        decay: 0.028
+      });
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY - 40,
+        radius: 10,
+        maxRadius: 68,
+        color: '#fde047',
+        glow: '#f59e0b',
+        lineWidth: 4,
+        alpha: 0.95
+      });
+    }
+
+    if (this.equipped.hand === 'hand_sword') {
+      this.stairEffects.push({
+        type: 'sword_slash',
+        x: worldX + this.playerFacing * 18,
+        y: worldY - 36,
+        facing: this.playerFacing,
+        alpha: 1.0,
+        progress: 0,
+        decay: 0.06
+      });
+    } else if (this.equipped.hand === 'hand_wand' || this.equipped.hand === 'hand_lollipop') {
+      for (let i = 0; i < 6; i++) {
+        this.particles.push({
+          x: worldX + this.playerFacing * 14 + randInt(-10, 10),
+          y: worldY - 40 + randInt(-10, 10),
+          vx: (Math.random() - 0.5) * 3,
+          vy: -1.5 - Math.random() * 2.5,
+          size: 5 + Math.random() * 3,
+          color: ['#fde047', '#f472b6', '#38bdf8'][i % 3],
+          glow: '#fde047',
+          rot: Math.random() * Math.PI,
+          vRot: 0.15,
+          alpha: 1,
+          decay: 0.04,
+          type: 'star5'
         });
       }
     }
@@ -3066,17 +4312,19 @@ class InfiniteMathStairsGame {
       // 발밑 & 방향전환 특수효과 스폰
       this.spawnStepEffects(nextStairObj.x, nextStairObj.y, actionType === 'TURN', isFast);
 
-      // 10계단마다 1코인 지급 (황금 자석 버프 시 2코인!)
+      // 10계단마다 1코인 지급 (황금 자석 버프 시 2코인, 다이아 잭팟 버프 시 +3코인 보너스!)
       if (this.currentStair > 0 && this.currentStair % 10 === 0) {
-        const earned = this.magnetBuffTimeLeft > 0 ? 2 : 1;
+        const baseCoin = this.magnetBuffTimeLeft > 0 ? 2 : 1;
+        const jackpotBonus = this.jackpotBuffTimeLeft > 0 ? 3 : 0;
+        const earned = baseCoin + jackpotBonus;
         this.coins += earned;
         this.savePersistentData();
         sfx.coin();
         this.floatingTexts.push({
           x: nextStairObj.x * 54,
           y: -nextStairObj.y * 34 - 95,
-          text: `+${earned} 🪙 COIN!`,
-          color: '#fef08a',
+          text: `+${earned} 🪙 COIN!${jackpotBonus > 0 ? ' (💎잭팟!)' : ''}`,
+          color: jackpotBonus > 0 ? '#67e8f9' : '#fef08a',
           alpha: 1,
           vy: -1.5
         });
@@ -3148,6 +4396,16 @@ class InfiniteMathStairsGame {
     sfx.setBGMMode('QUIZ');
     sfx.quizPop();
 
+    // 퀴즈 도달 시점에 새 최고 기록이 있고 마지막 전송 후 15초 이상 지났다면 백그라운드 중간 저장
+    if (
+      this.nickname &&
+      this.hasUnsyncedBest &&
+      this.rankingsMap[this.nickname] &&
+      Date.now() - this.lastPostTime > 15000
+    ) {
+      this.postScoreOnline(this.rankingsMap[this.nickname], false);
+    }
+
     // 기존에 포커스된 버튼이 있으면 해제하여 Space/Enter 연타로 버튼이 눌리는 것을 방지
     if (document.activeElement && typeof document.activeElement.blur === 'function') {
       document.activeElement.blur();
@@ -3169,7 +4427,12 @@ class InfiniteMathStairsGame {
 
     const stageIdx = this.getStageIndex();
     const curStage = STAGES[stageIdx] || STAGES[0];
-    const iqGain = (this.inventory && this.inventory.iq_booster > 0) || this.iqBoosterActive ? 20 : 10;
+    const iqGain =
+      this.inventory && this.inventory.einstein_capsule > 0
+        ? 30
+        : (this.inventory && this.inventory.iq_booster > 0) || this.iqBoosterActive
+        ? 20
+        : 10;
 
     const gradeBadge = document.getElementById('quiz-grade-badge');
     if (gradeBadge) gradeBadge.textContent = `초등학교 ${quiz.grade}학년 난이도 (현재 IQ ${this.iq})`;
@@ -3246,15 +4509,24 @@ class InfiniteMathStairsGame {
     sfx.setBGMMode('PLAY');
 
     if (Number(userValue) === this.activeQuiz.answer) {
-      // 정답! IQ +10 (또는 비타민 보유 시 +20) 상승!
+      // 정답! IQ +10 (또는 비타민 +20 / 아인슈타인 캡슐 +30) 상승!
       const prevGrade = getGradeForIQ(this.iq);
       const prevStageIdx = this.getStageIndex(this.iq);
 
       let iqDelta = 10;
-      if ((this.inventory.iq_booster || 0) > 0) {
+      if ((this.inventory.einstein_capsule || 0) > 0) {
+        this.inventory.einstein_capsule--;
+        iqDelta = 30;
+        this.savePersistentData();
+      } else if ((this.inventory.iq_booster || 0) > 0) {
         this.inventory.iq_booster--;
         this.iqBoosterActive = (this.inventory.iq_booster || 0) > 0;
         iqDelta = 20;
+        this.savePersistentData();
+      }
+
+      if (this.jackpotBuffTimeLeft > 0) {
+        this.coins += 5;
         this.savePersistentData();
       }
 
@@ -3317,13 +4589,14 @@ class InfiniteMathStairsGame {
 
     // 추락 시 현재 닉네임의 최고 스코어 저장 및 실시간 랭킹 서버 반영
     if (this.nickname) {
+      this.hasUnsyncedBest = true;
       this.updateRankingEntry(
         this.nickname,
         Math.max(this.bestStair, reachedStair),
         Math.max(this.bestIQ, reachedIQ),
-        true
+        false
       );
-      this.fetchOnlineRankings();
+      this.fetchOnlineRankings(false);
     }
 
     this.currentStair = 0;
@@ -3510,14 +4783,48 @@ class InfiniteMathStairsGame {
     }
 
     if (this.state === 'PLAYING') {
+      // 다이아 잭팟 물약 보유 시 등반 중 자동 발동 (1분간 지속)
+      if (this.jackpotBuffTimeLeft <= 0 && (this.inventory.fever_jackpot || 0) > 0) {
+        this.inventory.fever_jackpot--;
+        this.jackpotBuffTimeLeft = 60;
+        this.savePersistentData();
+        this.updateHUD();
+      }
+
+      // 초고속 로켓 부스터 작동 중일 때 자동 등반 처리
+      if (this.rocketStepsLeft > 0) {
+        this.rocketStepTimer -= dt;
+        if (this.rocketStepTimer <= 0) {
+          this.rocketStepTimer = 0.055;
+          this.rocketStepsLeft--;
+          const nextS = this.stairs[this.currentStair + 1];
+          const curS = this.stairs[this.currentStair];
+          if (nextS && curS) {
+            const expectedDir = nextS.x - curS.x;
+            const act = this.playerFacing === expectedDir ? 'CLIMB' : 'TURN';
+            this.handleAction(act);
+          } else {
+            this.rocketStepsLeft = 0;
+          }
+        }
+      }
+
       // 버프 타이머 감소
       let buffChanged = false;
       if (this.slowBuffTimeLeft > 0) {
         this.slowBuffTimeLeft = Math.max(0, this.slowBuffTimeLeft - dt);
         buffChanged = true;
       }
+      if (this.compassBuffTimeLeft > 0) {
+        this.compassBuffTimeLeft = Math.max(0, this.compassBuffTimeLeft - dt);
+        buffChanged = true;
+      }
       if (this.magnetBuffTimeLeft > 0) {
         this.magnetBuffTimeLeft = Math.max(0, this.magnetBuffTimeLeft - dt);
+        buffChanged = true;
+      }
+      if (this.jackpotBuffTimeLeft > 0) {
+        this.jackpotBuffTimeLeft = Math.max(0, this.jackpotBuffTimeLeft - dt);
         buffChanged = true;
       }
       if (buffChanged && this.tick % 15 === 0) {
@@ -4117,9 +5424,28 @@ class InfiniteMathStairsGame {
 
       const isQuizMilestone = i > 0 && i % this.quizInterval === 0;
       const isCoinStep = i > 0 && i % 10 === 0;
+      const stairSkin = this.equipped.stair;
 
-      this.ctx.fillStyle = isQuizMilestone ? '#f59e0b' : isCoinStep ? '#38bdf8' : '#f8fafc';
-      this.ctx.strokeStyle = isQuizMilestone ? '#78350f' : '#334155';
+      if (isQuizMilestone) {
+        this.ctx.fillStyle = '#f59e0b';
+        this.ctx.strokeStyle = '#78350f';
+      } else if (stairSkin === 'stair_gold') {
+        const gGrad = this.ctx.createLinearGradient(sx - 28, sy, sx + 28, sy + 15);
+        gGrad.addColorStop(0, '#fef08a');
+        gGrad.addColorStop(0.5, '#facc15');
+        gGrad.addColorStop(1, '#ca8a04');
+        this.ctx.fillStyle = gGrad;
+        this.ctx.strokeStyle = '#854d0e';
+      } else if (stairSkin === 'stair_candy') {
+        this.ctx.fillStyle = i % 2 === 0 ? '#f472b6' : '#34d399';
+        this.ctx.strokeStyle = '#ffffff';
+      } else if (stairSkin === 'stair_neon') {
+        this.ctx.fillStyle = '#0f172a';
+        this.ctx.strokeStyle = i % 2 === 0 ? '#22d3ee' : '#ec4899';
+      } else {
+        this.ctx.fillStyle = isCoinStep ? '#38bdf8' : '#f8fafc';
+        this.ctx.strokeStyle = '#334155';
+      }
       this.ctx.lineWidth = 2.5;
 
       this.ctx.beginPath();
@@ -4127,7 +5453,23 @@ class InfiniteMathStairsGame {
       this.ctx.fill();
       this.ctx.stroke();
 
-      this.ctx.fillStyle = isQuizMilestone ? '#b45309' : '#94a3b8';
+      if (!isQuizMilestone && stairSkin === 'stair_candy') {
+        this.ctx.fillStyle = '#fef9c3';
+        this.ctx.fillRect(sx - 26, sy + 6, 52, 3);
+      } else if (!isQuizMilestone && stairSkin === 'stair_neon') {
+        this.ctx.fillStyle = i % 2 === 0 ? '#22d3ee' : '#ec4899';
+        this.ctx.fillRect(sx - 20, sy + 6, 40, 2);
+      }
+
+      this.ctx.fillStyle = isQuizMilestone
+        ? '#b45309'
+        : stairSkin === 'stair_gold'
+        ? '#a16207'
+        : stairSkin === 'stair_candy'
+        ? '#db2777'
+        : stairSkin === 'stair_neon'
+        ? '#1e1b4b'
+        : '#94a3b8';
       this.ctx.fillRect(sx - 24, sy + 15, 48, 5);
 
       if (isQuizMilestone) {
@@ -4137,10 +5479,33 @@ class InfiniteMathStairsGame {
         this.ctx.textAlign = 'center';
         this.ctx.fillText(`📝 초${gradeNum} 수학시험 (${i}계단)`, sx, sy - 10);
       } else if (isCoinStep) {
-        this.ctx.fillStyle = '#0f172a';
+        this.ctx.fillStyle = stairSkin === 'stair_neon' ? '#fef08a' : '#0f172a';
         this.ctx.font = 'bold 10px sans-serif';
         this.ctx.textAlign = 'center';
         this.ctx.fillText(`🪙 ${i}`, sx, sy + 11);
+      }
+
+      // 방향 나침반 버프 활성 시 다음 계단 위에 직관적인 행동 가이드 표시!
+      if (this.compassBuffTimeLeft > 0 && i === this.currentStair + 1 && this.state === 'PLAYING') {
+        const curS = this.stairs[this.currentStair];
+        if (curS) {
+          const expectedDir = s.x - curS.x;
+          const needTurn = this.playerFacing !== expectedDir;
+          this.ctx.save();
+          this.ctx.fillStyle = needTurn ? 'rgba(225, 29, 72, 0.92)' : 'rgba(2, 132, 199, 0.92)';
+          this.ctx.strokeStyle = '#ffffff';
+          this.ctx.lineWidth = 2;
+          this.ctx.beginPath();
+          this.ctx.roundRect(sx - 34, sy - 30, 68, 20, 10);
+          this.ctx.fill();
+          this.ctx.stroke();
+          this.ctx.fillStyle = '#ffffff';
+          this.ctx.font = 'bold 11px "Jua", sans-serif';
+          this.ctx.textAlign = 'center';
+          this.ctx.textBaseline = 'middle';
+          this.ctx.fillText(needTurn ? '🔄 방향전환!' : '👟 오르기!', sx, sy - 20);
+          this.ctx.restore();
+        }
       }
     }
 
@@ -4271,6 +5636,50 @@ class InfiniteMathStairsGame {
 
         // 계단 바닥의 초신성 8각 별빛 마법진
         drawStar4(this.ctx, se.x, se.y + 2, 26 + se.progress * 10, 8, '#fde047', '#38bdf8', se.progress * 1.5);
+      } else if (se.type === 'ice_pillar') {
+        const hIce = 48 + se.progress * 12;
+        this.ctx.fillStyle = 'rgba(186, 230, 253, 0.8)';
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 1.5;
+        this.ctx.beginPath();
+        this.ctx.moveTo(se.x - 18, se.y + 4);
+        this.ctx.lineTo(se.x - 8, se.y - hIce * 0.8);
+        this.ctx.lineTo(se.x, se.y - hIce);
+        this.ctx.lineTo(se.x + 8, se.y - hIce * 0.8);
+        this.ctx.lineTo(se.x + 18, se.y + 4);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.stroke();
+      } else if (se.type === 'galaxy_vortex') {
+        this.ctx.strokeStyle = '#c084fc';
+        this.ctx.shadowColor = '#a855f7';
+        this.ctx.shadowBlur = 16;
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.ellipse(se.x, se.y - 6, 24 + se.progress * 12, 8, 0, 0, Math.PI * 2);
+        this.ctx.stroke();
+      } else if (se.type === 'cyber_jet') {
+        this.ctx.strokeStyle = '#22d3ee';
+        this.ctx.lineWidth = 2.5;
+        for (let r = 0; r < 3; r++) {
+          this.ctx.strokeRect(se.x - 20 - r * 4, se.y - r * 12 - se.progress * 10, 40 + r * 8, 6);
+        }
+      } else if (se.type === 'math_god_circle') {
+        this.ctx.strokeStyle = '#fde047';
+        this.ctx.shadowColor = '#f59e0b';
+        this.ctx.shadowBlur = 14;
+        this.ctx.lineWidth = 2.5;
+        this.ctx.beginPath();
+        this.ctx.ellipse(se.x, se.y + 2, 28 + se.progress * 14, 9, 0, 0, Math.PI * 2);
+        this.ctx.stroke();
+      } else if (se.type === 'sword_slash') {
+        this.ctx.strokeStyle = '#38bdf8';
+        this.ctx.shadowColor = '#67e8f9';
+        this.ctx.shadowBlur = 14;
+        this.ctx.lineWidth = 4;
+        this.ctx.beginPath();
+        this.ctx.arc(se.x, se.y, 26, -0.8, 0.8);
+        this.ctx.stroke();
       }
 
       this.ctx.restore();

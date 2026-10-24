@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>무한의 수학 계단: 바보 신이준 천재 만들기</title>
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=8" />
 </head>
 <body>
   <div id="game-wrapper">
@@ -59,9 +59,17 @@
 
     <!-- 인게임 기능 아이템 퀵 슬롯 바 -->
     <div id="quick-item-bar">
+      <button id="btn-use-rocket" class="quick-item-btn" title="즉시 50계단을 로켓 점프로 자동 돌파합니다">
+        <span>🚀 로켓50</span>
+        <strong id="quick-rocket-count">0</strong>
+      </button>
       <button id="btn-use-slow" class="quick-item-btn" title="1분간 계단 제한시간이 천천히 감소합니다">
         <span>🐢 슬로우</span>
         <strong id="quick-slow-count">0</strong>
+      </button>
+      <button id="btn-use-compass" class="quick-item-btn" title="1분간 다음 계단 방향(오르기/방향전환)을 표시합니다">
+        <span>🧭 나침반</span>
+        <strong id="quick-compass-count">0</strong>
       </button>
       <button id="btn-use-magnet" class="quick-item-btn" title="1분간 10계단마다 코인을 2배(2코인)로 획득합니다">
         <span>🧲 2배코인</span>
@@ -100,11 +108,12 @@
             <div class="ranking-title-wrap">
               <span class="ranking-trophy">🏆</span>
               <strong>실시간 명예의 전당 랭킹</strong>
-              <span id="ranking-sync-badge" class="sync-badge">실시간</span>
+              <span id="ranking-sync-badge" class="sync-badge" title="클릭하여 실시간 랭킹 동기화">실시간</span>
             </div>
             <div class="ranking-user-pill">
               <span>👤 <strong id="start-current-nick">미등록</strong></span>
               <button type="button" id="btn-change-nick-start" class="mini-pill-btn" title="닉네임 변경">✏️ 변경</button>
+              <button type="button" id="btn-refresh-ranking-start" class="mini-pill-btn" title="실시간 랭킹 새로고침">🔄 갱신</button>
               <button type="button" id="btn-open-ranking-start" class="mini-pill-btn" title="전체 랭킹 크게 보기">🔍 확대</button>
             </div>
           </div>
@@ -186,8 +195,9 @@
         <p class="shop-sub-notice">✨ 한 번 획득한 코인과 구매한 모든 아이템은 게임을 껐다 켜도 영구히 유지됩니다!</p>
 
         <div class="shop-tabs">
-          <button type="button" class="shop-tab active" data-tab="func">⚡ 기능 아이템</button>
-          <button type="button" class="shop-tab" data-tab="cosmetic">👟 신발 & 꾸미기</button>
+          <button type="button" class="shop-tab active" data-tab="func">⚡ 기능·버프</button>
+          <button type="button" class="shop-tab" data-tab="cosmetic">👟 신발·날개·오라</button>
+          <button type="button" class="shop-tab" data-tab="special">🐉 펫·무기·계단</button>
         </div>
 
         <div id="shop-items-container" class="shop-items-list">
@@ -213,12 +223,15 @@
         </div>
 
         <!-- 퀴즈 전용 아이템 사용 버튼 바 -->
-        <div class="quiz-item-bar">
+        <div class="quiz-item-bar quiz-item-bar-3">
           <button type="button" id="btn-quiz-add-time" class="quiz-item-btn">
             ⏱️ 시간 +30초 <span id="quiz-time-item-count">(보유: 0)</span>
           </button>
           <button type="button" id="btn-quiz-show-hint" class="quiz-item-btn">
             💡 힌트 보기 <span id="quiz-hint-item-count">(보유: 0)</span>
+          </button>
+          <button type="button" id="btn-quiz-pass" class="quiz-item-btn quiz-pass-btn">
+            🎫 즉시 정답 <span id="quiz-pass-item-count">(보유: 0)</span>
           </button>
         </div>
 
@@ -321,6 +334,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=6"></script>
+  <script src="game.js?v=8"></script>
 </body>
 </html>
