@@ -329,6 +329,14 @@ body {
 
 #quiz-modal {
   z-index: 100 !important;
+  align-items: flex-start;
+  padding-top: 20px;
+  padding-bottom: 120px;
+}
+
+#controls.quiz-disabled {
+  pointer-events: none !important;
+  opacity: 0.25;
 }
 
 #shop-modal,
@@ -581,6 +589,12 @@ body {
 .choice-btn:active {
   transform: translateY(3px);
   box-shadow: 0 1px 0 #1d4ed8;
+}
+
+.choice-btn.quiz-safety-locked {
+  pointer-events: none;
+  opacity: 0.72;
+  filter: grayscale(0.25);
 }
 
 .quiz-Direct-input {
@@ -1194,4 +1208,371 @@ body {
 
 .shop-buy-btn:active {
   transform: translateY(2px);
+}
+
+/* 닉네임 모달 & 랭킹 모달 레이어 우선순위 */
+#nickname-modal {
+  z-index: 120 !important;
+}
+
+#ranking-modal {
+  z-index: 110 !important;
+}
+
+/* 시작 화면 실시간 랭킹 보드 */
+.start-ranking-box {
+  background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 16px;
+  padding: 10px 12px;
+  margin: 8px 0 10px;
+  text-align: left;
+  box-shadow: inset 0 2px 6px rgba(245, 158, 11, 0.12);
+}
+
+.ranking-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.ranking-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'Jua', sans-serif;
+  font-size: 0.96rem;
+  color: #92400e;
+}
+
+.ranking-trophy {
+  font-size: 1.1rem;
+}
+
+.sync-badge {
+  background: #10b981;
+  color: #ffffff;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 99px;
+}
+
+.ranking-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.76rem;
+  color: #78350f;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 3px 7px;
+  border-radius: 99px;
+  border: 1px solid #fcd34d;
+}
+
+.mini-pill-btn {
+  border: 1px solid #f59e0b;
+  background: #ffffff;
+  color: #b45309;
+  font-family: 'Jua', sans-serif;
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: transform 0.08s, background 0.12s;
+}
+
+.mini-pill-btn:hover {
+  background: #fef3c7;
+}
+
+.mini-pill-btn:active {
+  transform: scale(0.94);
+}
+
+.my-rank-summary {
+  background: #ffffff;
+  border: 1.5px dashed #f59e0b;
+  border-radius: 10px;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  color: #78350f;
+  margin-bottom: 7px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.start-ranking-list {
+  max-height: 128px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-right: 2px;
+}
+
+/* 랭킹 행 공통 스타일 */
+.ranking-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 11px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  color: #1e293b;
+}
+
+.ranking-row.rank-top-1 {
+  background: linear-gradient(90deg, #fef9c3 0%, #ffffff 100%);
+  border-color: #eab308;
+}
+
+.ranking-row.rank-top-2 {
+  background: linear-gradient(90deg, #f1f5f9 0%, #ffffff 100%);
+  border-color: #94a3b8;
+}
+
+.ranking-row.rank-top-3 {
+  background: linear-gradient(90deg, #ffedd5 0%, #ffffff 100%);
+  border-color: #f97316;
+}
+
+.ranking-row.is-me {
+  border: 2px solid #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+}
+
+.rank-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rank-num {
+  font-family: 'Jua', sans-serif;
+  font-size: 0.92rem;
+  min-width: 38px;
+  text-align: center;
+  color: #334155;
+  flex-shrink: 0;
+}
+
+.rank-top-1 .rank-num {
+  color: #b45309;
+}
+
+.rank-nick {
+  font-weight: 800;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.me-tag {
+  background: #4f46e5;
+  color: #ffffff;
+  font-family: 'Jua', sans-serif;
+  font-size: 0.66rem;
+  padding: 1px 6px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+
+.rank-stage-pill {
+  font-size: 0.7rem;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 1px 6px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+
+.rank-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rank-stair-score {
+  font-family: 'Jua', sans-serif;
+  font-size: 0.95rem;
+  color: #e11d48;
+}
+
+.rank-iq-sub {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #2563eb;
+  background: #eff6ff;
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+
+.ranking-empty {
+  text-align: center;
+  padding: 14px 8px;
+  font-size: 0.8rem;
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+}
+
+/* 다시시작(추락) 팝업 랭킹 보기 버튼 & 하이라이트 */
+.fail-rank-highlight {
+  color: #b45309;
+  font-weight: 800;
+  background: #fef3c7;
+  border-radius: 8px;
+  padding: 3px 8px;
+  margin: 3px 0;
+  border: 1px solid #fde68a;
+}
+
+.ranking-view-btn {
+  width: 100%;
+  border: 2px solid #f59e0b;
+  border-radius: 14px;
+  padding: 11px 12px;
+  font-family: 'Jua', sans-serif;
+  font-size: 1.12rem;
+  color: #78350f;
+  background: linear-gradient(180deg, #fef08a 0%, #facc15 100%);
+  box-shadow: 0 4px 0 #b45309;
+  cursor: pointer;
+  transition: transform 0.08s;
+}
+
+.ranking-view-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #b45309;
+}
+
+/* 전체 랭킹 모달 */
+.ranking-card {
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 18px;
+}
+
+.ranking-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  text-align: left;
+  margin-bottom: 10px;
+}
+
+.ranking-modal-header h2 {
+  font-family: 'Jua', sans-serif;
+  font-size: 1.5rem;
+  color: #0f172a;
+}
+
+.mini-refresh-btn {
+  border: 2px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  font-family: 'Jua', sans-serif;
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #94a3b8;
+}
+
+.mini-refresh-btn:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.modal-my-rank-banner {
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  border: 2px solid #6366f1;
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  text-align: left;
+  font-size: 0.86rem;
+  color: #1e1b4b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.modal-ranking-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 46vh;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding-right: 2px;
+}
+
+/* 닉네임 입력 모달 */
+.nickname-card h2 {
+  font-family: 'Jua', sans-serif;
+  font-size: 1.65rem;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.nickname-desc {
+  font-size: 0.88rem;
+  color: #475569;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.nickname-input-wrap {
+  margin-bottom: 14px;
+}
+
+#nickname-input {
+  width: 100%;
+  padding: 12px 14px;
+  font-family: 'Jua', sans-serif;
+  font-size: 1.25rem;
+  color: #0f172a;
+  background: #f8fafc;
+  border: 3px solid #6366f1;
+  border-radius: 14px;
+  text-align: center;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+#nickname-input:focus {
+  border-color: #4f46e5;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
+}
+
+.nickname-error {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #e11d48;
+}
+
+.nickname-error.hidden,
+.secondary-btn.hidden {
+  display: none !important;
 }

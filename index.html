@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>무한의 수학 계단: 바보 신이준 천재 만들기</title>
-  <link rel="stylesheet" href="style.css?v=3" />
+  <link rel="stylesheet" href="style.css?v=6" />
 </head>
 <body>
   <div id="game-wrapper">
@@ -92,12 +92,34 @@
       <div class="modal-card start-card">
         <div class="title-ribbon">무한의 계단 × 초등 수학 RPG</div>
         <h1>바보 <span class="highlight">신이준</span><br/>천재 만들기 대작전!</h1>
-        <canvas id="intro-char-canvas" width="220" height="150"></canvas>
+        <canvas id="intro-char-canvas" width="220" height="135"></canvas>
+
+        <!-- 플레이어 프로필 & 실시간 랭킹 보드 (시작 화면 표시) -->
+        <div class="start-ranking-box" id="start-ranking-section">
+          <div class="ranking-box-header">
+            <div class="ranking-title-wrap">
+              <span class="ranking-trophy">🏆</span>
+              <strong>실시간 명예의 전당 랭킹</strong>
+              <span id="ranking-sync-badge" class="sync-badge">실시간</span>
+            </div>
+            <div class="ranking-user-pill">
+              <span>👤 <strong id="start-current-nick">미등록</strong></span>
+              <button type="button" id="btn-change-nick-start" class="mini-pill-btn" title="닉네임 변경">✏️ 변경</button>
+              <button type="button" id="btn-open-ranking-start" class="mini-pill-btn" title="전체 랭킹 크게 보기">🔍 확대</button>
+            </div>
+          </div>
+          <div id="start-my-rank-summary" class="my-rank-summary">
+            내 최고 기록: <strong>0계단</strong> (IQ 0)
+          </div>
+          <div id="start-ranking-list" class="start-ranking-list">
+            <!-- JS에서 랭킹 목록 동적 렌더링 -->
+          </div>
+        </div>
+
         <p class="story-text">
           누더기 거지옷을 입고 빙구처럼 태어난 <strong>신이준 (IQ 0)</strong>!<br/>
           수학 문제를 1문제 맞힐 때마다 <strong>IQ가 +10씩 상승</strong>하며,<br/>
-          <strong>IQ 50마다 학년이 올라가고</strong> 아이템 상점이 열립니다!<br/>
-          (문제를 틀려도 떨어지지 않고 IQ만 동결된 채 계속 오릅니다!)
+          <strong>IQ 50마다 학년이 올라가고</strong> 아이템 상점이 열립니다!
         </p>
         <div class="rule-box">
           <div>🧠 <strong>IQ별 학년:</strong> IQ ~50(초1), ~100(초2), ~150(초3), ~200(초4), ~250(초5), 260+(초6)</div>
@@ -227,14 +249,16 @@
       <div class="modal-card fail-card">
         <div class="babo-siren">🚨 0계단으로 추락! 바보로 퇴화했습니다 🚨</div>
         <h2 class="babo-main-msg">너는 최강 바보야</h2>
-        <canvas id="fail-char-canvas" width="200" height="150"></canvas>
+        <canvas id="fail-char-canvas" width="200" height="140"></canvas>
         <p id="fail-reason-text" class="fail-reason">계단에서 발을 헛디뎌 추락했습니다!</p>
         <div id="fail-solution-box" class="fail-solution hidden"></div>
         <div class="fail-stats">
           <div>도달했던 계단: <strong id="fail-reached-stair">100</strong>계단 / 달성 IQ: <strong id="fail-reached-iq">0</strong></div>
+          <div id="fail-best-rank-line" class="fail-rank-highlight">🏆 내 최고 기록: <strong id="fail-best-stair">0</strong>계단 (<span id="fail-my-rank">순위 집계중</span>)</div>
           <div>보유 코인: 🪙 <strong id="fail-coins-kept">0</strong> (코인과 구매한 아이템은 그대로 유지됩니다!)</div>
         </div>
         <div class="modal-btn-group">
+          <button id="btn-open-ranking-fail" class="ranking-view-btn">🏆 전체 랭킹 보기</button>
           <div class="modal-btn-row-equal">
             <button id="btn-open-shop-fail" class="secondary-btn">🏪 아이템 상점</button>
             <button id="btn-open-options-fail" class="secondary-btn">⚙️ 시험 간격 (<span class="quiz-interval-label">100계단</span>)</button>
@@ -243,8 +267,60 @@
         </div>
       </div>
     </div>
+
+    <!-- 전체 랭킹 보기 모달 (시작화면 & 다시시작 팝업에서 열림) -->
+    <div id="ranking-modal" class="modal-overlay">
+      <div class="modal-card ranking-card">
+        <div class="ranking-modal-header">
+          <div>
+            <div class="title-ribbon">🏆 명예의 전당 랭킹</div>
+            <h2>도전자 최고 계단 순위</h2>
+          </div>
+          <button type="button" id="btn-refresh-ranking" class="mini-refresh-btn" title="실시간 랭킹 새로고침">🔄 새로고침</button>
+        </div>
+
+        <div id="modal-my-rank-box" class="modal-my-rank-banner">
+          <!-- 내 닉네임, 최고 계단, 현재 순위 표시 -->
+        </div>
+
+        <div id="modal-ranking-list" class="modal-ranking-list">
+          <!-- 전체 랭킹 리스트 동적 렌더링 -->
+        </div>
+
+        <div class="modal-btn-row">
+          <button type="button" id="btn-change-nick-modal" class="secondary-btn">✏️ 닉네임 변경</button>
+          <button type="button" id="btn-close-ranking" class="primary-btn">닫기 (돌아가기)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 첫 접속 닉네임 입력 모달 -->
+    <div id="nickname-modal" class="modal-overlay">
+      <div class="modal-card nickname-card">
+        <div class="title-ribbon">👋 도전자 프로필 등록</div>
+        <h2>닉네임을 입력해주세요!</h2>
+        <p class="nickname-desc">
+          처음 오셨군요! 사용할 <strong>닉네임</strong>을 입력하면<br/>
+          앞으로 이 닉네임의 <strong>최고 계단 스코어</strong>가 랭킹에 자동 저장됩니다!
+        </p>
+        <div class="nickname-input-wrap">
+          <input
+            type="text"
+            id="nickname-input"
+            maxlength="12"
+            placeholder="닉네임 입력 (1~12자)"
+            autocomplete="off"
+          />
+          <div id="nickname-error" class="nickname-error hidden">닉네임을 1글자 이상 입력해주세요!</div>
+        </div>
+        <div class="modal-btn-group">
+          <button type="button" id="btn-save-nickname" class="primary-btn">닉네임 저장하고 시작!</button>
+          <button type="button" id="btn-cancel-nickname" class="secondary-btn hidden">취소</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <script src="game.js?v=3"></script>
+  <script src="game.js?v=6"></script>
 </body>
 </html>

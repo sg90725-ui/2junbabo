@@ -1388,26 +1388,20 @@ function drawShinYiJun(ctx, x, y, stageIdx, facing, climbProgress, footParity, t
     ctx.fill();
   }
 
-  // 꾸미기 아이템: 초신성 네온 왕관
+  // 꾸미기 아이템: 초신성 네온 왕관 (화려한 보석 왕관 + 전면 공전 별빛!)
   if (equipped.accessory === 'aura_crown' && !isFailing) {
-    const crownFloat = Math.sin(tick * 0.16) * 3;
-    ctx.save();
-    ctx.translate(0, (stageIdx >= 6 ? -102 : -84) + crownFloat);
-    ctx.fillStyle = '#facc15';
-    ctx.strokeStyle = '#fef08a';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-12, 0);
-    ctx.lineTo(-14, -11);
-    ctx.lineTo(-6, -5);
-    ctx.lineTo(0, -14);
-    ctx.lineTo(6, -5);
-    ctx.lineTo(14, -11);
-    ctx.lineTo(12, 0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
+    drawSupernovaCrown(ctx, stageIdx >= 6 ? -100 : -82, tick, isClimbing);
+
+    // 캐릭터 앞쪽을 지나는 초신성 공전 네온 스타
+    for (let s = 0; s < 3; s++) {
+      const orbitAng = tick * 0.09 + (s * Math.PI * 2) / 3;
+      if (Math.sin(orbitAng) >= 0) {
+        const ox = Math.cos(orbitAng) * 34;
+        const oy = -44 + Math.sin(orbitAng) * 14;
+        const starColors = ['#38bdf8', '#fde047', '#f472b6'];
+        drawStar4(ctx, ox, oy, 7, 2.2, '#ffffff', starColors[s], -tick * 0.12);
+      }
+    }
   }
 
   ctx.restore();
@@ -1432,12 +1426,18 @@ class InfiniteMathStairsGame {
     this.currentStair = 0;
     this.iq = 0; // 문제 1개 맞힐 때마다 +10 상승!
     this.bestStair = Number(localStorage.getItem('2jun_best_stair') || 0);
+    this.bestIQ = Number(localStorage.getItem('2jun_best_iq') || 0);
+    this.nickname = (localStorage.getItem('2jun_nickname') || '').trim();
+    this.rankingsMap = {};
+    this.lastPostedKey = '';
+    this.rankingEndpoint = 'https://ntfy.sh/2junbabo_math_stairs_rank_2026_v1';
 
     const savedInterval = Number(localStorage.getItem('2jun_quiz_interval_v2') || 20);
     this.quizInterval = Math.min(999, Math.max(1, savedInterval || 20));
 
-    // 영구 보존 데이터 로드 (코인 + 인벤토리 + 꾸미기 아이템)
+    // 영구 보존 데이터 로드 (코인 + 인벤토리 + 꾸미기 아이템 + 랭킹)
     this.loadPersistentData();
+    this.loadLocalRankings();
 
     // 캐릭터 모션 및 고속 질주/방향전환 특수효과 상태
     this.playerFacing = 1; // 1: 오른쪽, -1: 왼쪽
@@ -1449,9 +1449,10 @@ class InfiniteMathStairsGame {
     this.screenShake = 0;
     this.tick = 0;
 
-    // 파티클, 무지개 자국, 충격파, 플로팅 텍스트, 잔상 배열
+    // 파티클, 무지개 자국, 계단 원소/초신성 이펙트, 충격파, 플로팅 텍스트, 잔상 배열
     this.particles = [];
     this.rainbowTrails = [];
+    this.stairEffects = [];
     this.shockwaves = [];
     this.floatingTexts = [];
     this.afterimages = [];
@@ -1478,15 +1479,42 @@ class InfiniteMathStairsGame {
     this.quizTotalLimit = 15;
     this.quizHintUsed = false;
     this.lastSecTick = 0;
+    this.quizUnlockTime = 0;
 
     // 현재 상점 탭
     this.currentShopTab = 'func';
 
-    // 배경 구름
+    // 배경 구름 및 시간대별 풍경 오브젝트 (별, 열기구, 새떼, 스카이라인 빌딩)
     this.clouds = Array.from({ length: 8 }, (_, i) => ({
       x: (i - 4) * 180,
       y: -i * 160 - 100,
       scale: 0.7 + (i % 3) * 0.25
+    }));
+
+    this.bgStars = Array.from({ length: 38 }, (_, i) => ({
+      rx: ((i * 73) % 100) / 100,
+      ry: ((i * 41) % 68) / 100,
+      size: 1.2 + (i % 3) * 0.9,
+      phase: i * 0.7
+    }));
+
+    this.bgBalloons = [
+      { x: 90, y: 180, color1: '#ef4444', color2: '#fde047', scale: 0.95, speed: 0.18 },
+      { x: 310, y: 290, color1: '#38bdf8', color2: '#f472b6', scale: 0.75, speed: 0.13 },
+      { x: 460, y: 130, color1: '#a855f7', color2: '#34d399', scale: 0.85, speed: 0.22 }
+    ];
+
+    this.bgBirds = Array.from({ length: 5 }, (_, i) => ({
+      offsetX: i * 26,
+      offsetY: (i % 2) * 12,
+      flapPhase: i * 0.8
+    }));
+
+    this.cityBuildings = Array.from({ length: 14 }, (_, i) => ({
+      w: 36 + (i * 17) % 28,
+      h: 65 + (i * 37) % 95,
+      hasSpire: i % 4 === 0,
+      windows: (i % 3) + 2
     }));
 
     this.resetStairs();
@@ -1560,6 +1588,10 @@ class InfiniteMathStairsGame {
     this.elShopModal = document.getElementById('shop-modal');
     this.elQuizModal = document.getElementById('quiz-modal');
     this.elFailModal = document.getElementById('fail-modal');
+    this.elRankingModal = document.getElementById('ranking-modal');
+    this.elNicknameModal = document.getElementById('nickname-modal');
+    this.elNicknameInput = document.getElementById('nickname-input');
+    this.elNicknameError = document.getElementById('nickname-error');
     this.elEvoBanner = document.getElementById('evolution-banner');
     this.elEvoTitle = document.getElementById('evo-title-text');
     this.elEvoDetail = document.getElementById('evo-detail');
@@ -1569,16 +1601,53 @@ class InfiniteMathStairsGame {
     if (this.elBestCount) this.elBestCount.textContent = this.bestStair;
     this.syncIntervalLabels();
     this.updateHUD();
+    this.renderRankingBoards();
+
+    // 처음 접속 시 저장된 닉네임이 없으면 닉네임 입력 모달 자동 표시
+    if (!this.nickname) {
+      this.openNicknameModal(true);
+    } else {
+      this.updateRankingEntry(this.nickname, this.bestStair, this.bestIQ, false);
+    }
+    this.fetchOnlineRankings();
 
     // 시작 및 재시작 버튼
     document.getElementById('btn-start-game')?.addEventListener('click', () => {
+      if (!this.nickname) {
+        this.openNicknameModal(true);
+        return;
+      }
       sfx.init();
       this.startGame();
     });
 
     document.getElementById('btn-retry-game')?.addEventListener('click', () => {
+      if (!this.nickname) {
+        this.openNicknameModal(true);
+        return;
+      }
       this.startGame();
     });
+
+    // 닉네임 등록 및 변경 이벤트
+    document.getElementById('btn-save-nickname')?.addEventListener('click', () => this.saveNicknameModal());
+    document.getElementById('btn-cancel-nickname')?.addEventListener('click', () => this.closeNicknameModal());
+    document.getElementById('btn-change-nick-start')?.addEventListener('click', () => this.openNicknameModal(false));
+    document.getElementById('btn-change-nick-modal')?.addEventListener('click', () => this.openNicknameModal(false));
+
+    this.elNicknameInput?.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.saveNicknameModal();
+      }
+    });
+
+    // 랭킹 모달 열기/닫기/새로고침 이벤트 (시작 화면 & 다시시작 팝업)
+    document.getElementById('btn-open-ranking-start')?.addEventListener('click', () => this.openRankingModal());
+    document.getElementById('btn-open-ranking-fail')?.addEventListener('click', () => this.openRankingModal());
+    document.getElementById('btn-close-ranking')?.addEventListener('click', () => this.closeRankingModal());
+    document.getElementById('btn-refresh-ranking')?.addEventListener('click', () => this.fetchOnlineRankings(true));
 
     // 옵션 모달 열기/닫기/저장
     const openOpts = () => this.openOptionsModal();
@@ -1641,17 +1710,52 @@ class InfiniteMathStairsGame {
 
     btnTurn?.addEventListener('pointerdown', (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      if (this.state !== 'PLAYING') return;
       this.handleAction('TURN');
     });
 
     btnClimb?.addEventListener('pointerdown', (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      if (this.state !== 'PLAYING') return;
       this.handleAction('CLIMB');
+    });
+
+    // 퀴즈 모달 배경이나 문제버튼 외 영역(특히 기존 방향전환/오르기 버튼이 있던 하단 영역)을 눌렀을 때 절대 오작동하지 않도록 차단!
+    this.elQuizModal?.addEventListener('pointerdown', (e) => {
+      const targetBtn = e.target.closest('.choice-btn, .quiz-item-btn');
+      if (!targetBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+    this.elQuizModal?.addEventListener('click', (e) => {
+      const targetBtn = e.target.closest('.choice-btn, .quiz-item-btn');
+      if (!targetBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
     });
 
     // 키보드 조작
     window.addEventListener('keydown', (e) => {
+      // 입력창 포커스 중이거나 닉네임/랭킹/상점/옵션 모달이 열려 있을 때는 스페이스/엔터 단축키 무시
+      if (
+        document.activeElement?.tagName === 'INPUT' ||
+        this.elNicknameModal?.classList.contains('active') ||
+        this.elRankingModal?.classList.contains('active') ||
+        this.elShopModal?.classList.contains('active') ||
+        this.elOptionsModal?.classList.contains('active')
+      ) {
+        return;
+      }
+
       if (this.state === 'QUIZ') {
+        // 계단 등반 키(Space, Enter, J, F, 화살표 등) 연타 시 포커스된 버튼이 눌리는 현상 완전 차단!
+        e.preventDefault();
+        e.stopPropagation();
+        if (performance.now() < this.quizUnlockTime) return;
         if (['1', '2', '3', '4'].includes(e.key)) {
           const idx = Number(e.key) - 1;
           if (this.activeQuiz && this.activeQuiz.choices[idx] !== undefined) {
@@ -1748,6 +1852,367 @@ class InfiniteMathStairsGame {
     document.querySelectorAll('.quiz-interval-label').forEach((el) => {
       el.textContent = `${this.quizInterval}계단`;
     });
+  }
+
+  // ==================== 닉네임 & 실시간 랭킹 시스템 ====================
+  loadLocalRankings() {
+    let saved = null;
+    try {
+      saved = JSON.parse(localStorage.getItem('2jun_rankings_v1') || 'null');
+    } catch (_) {
+      saved = null;
+    }
+    this.rankingsMap = saved && typeof saved === 'object' ? saved : {};
+
+    if (this.nickname) {
+      const existing = this.rankingsMap[this.nickname];
+      if (existing) {
+        this.bestStair = Math.max(this.bestStair, Number(existing.stair) || 0);
+        this.bestIQ = Math.max(this.bestIQ, Number(existing.iq) || 0);
+        localStorage.setItem('2jun_best_stair', String(this.bestStair));
+        localStorage.setItem('2jun_best_iq', String(this.bestIQ));
+      }
+      this.rankingsMap[this.nickname] = {
+        nick: this.nickname,
+        stair: this.bestStair,
+        iq: this.bestIQ,
+        updatedAt: existing?.updatedAt || Date.now()
+      };
+      this.saveLocalRankings();
+    }
+  }
+
+  saveLocalRankings() {
+    try {
+      localStorage.setItem('2jun_rankings_v1', JSON.stringify(this.rankingsMap));
+    } catch (_) {}
+  }
+
+  openNicknameModal(isInitial = false) {
+    if (!this.elNicknameModal) return;
+    if (this.elNicknameInput) {
+      this.elNicknameInput.value = this.nickname || '';
+    }
+    if (this.elNicknameError) {
+      this.elNicknameError.classList.add('hidden');
+    }
+    const cancelBtn = document.getElementById('btn-cancel-nickname');
+    if (cancelBtn) {
+      if (isInitial && !this.nickname) {
+        cancelBtn.classList.add('hidden');
+      } else {
+        cancelBtn.classList.remove('hidden');
+      }
+    }
+    this.elNicknameModal.classList.add('active');
+    setTimeout(() => {
+      this.elNicknameInput?.focus();
+    }, 80);
+  }
+
+  closeNicknameModal() {
+    if (!this.nickname) return;
+    this.elNicknameModal?.classList.remove('active');
+  }
+
+  saveNicknameModal() {
+    const raw = (this.elNicknameInput?.value || '').trim();
+    if (!raw) {
+      if (this.elNicknameError) {
+        this.elNicknameError.textContent = '닉네임을 1글자 이상 입력해주세요!';
+        this.elNicknameError.classList.remove('hidden');
+      }
+      this.elNicknameInput?.focus();
+      return;
+    }
+
+    const cleanNick = raw.slice(0, 12);
+    const wasFirstRegistration = !this.nickname;
+    const isSameNick = this.nickname === cleanNick;
+
+    this.nickname = cleanNick;
+    localStorage.setItem('2jun_nickname', this.nickname);
+
+    const existingRecord = this.rankingsMap[this.nickname];
+    if (existingRecord) {
+      // 이미 등록된 닉네임이면 해당 닉네임의 최고 스코어 복원 (첫 등록이면 기존 로컬 최고기록과 비교해 높은 값 유지)
+      this.bestStair = wasFirstRegistration
+        ? Math.max(this.bestStair, Number(existingRecord.stair) || 0)
+        : Number(existingRecord.stair) || 0;
+      this.bestIQ = wasFirstRegistration
+        ? Math.max(this.bestIQ, Number(existingRecord.iq) || 0)
+        : Number(existingRecord.iq) || 0;
+    } else if (!wasFirstRegistration && !isSameNick) {
+      // 다른 사람의 새 닉네임으로 변경한 경우 0계단부터 그 닉네임 전용 최고기록 측정
+      this.bestStair = 0;
+      this.bestIQ = 0;
+    }
+
+    localStorage.setItem('2jun_best_stair', String(this.bestStair));
+    localStorage.setItem('2jun_best_iq', String(this.bestIQ));
+    if (this.elBestCount) this.elBestCount.textContent = this.bestStair;
+
+    this.updateRankingEntry(this.nickname, this.bestStair, this.bestIQ, true);
+    this.elNicknameModal?.classList.remove('active');
+    this.updateHUD();
+  }
+
+  updateRankingEntry(nick, stair, iq, pushOnline = false) {
+    const cleanNick = (nick || '').trim();
+    if (!cleanNick) return;
+
+    const prev = this.rankingsMap[cleanNick];
+    const nextStair = Math.max(prev?.stair || 0, Number(stair) || 0);
+    const nextIQ = Math.max(prev?.iq || 0, Number(iq) || 0);
+    const isImproved =
+      !prev ||
+      nextStair > (prev.stair || 0) ||
+      (nextStair === (prev.stair || 0) && nextIQ > (prev.iq || 0));
+
+    this.rankingsMap[cleanNick] = {
+      nick: cleanNick,
+      stair: nextStair,
+      iq: nextIQ,
+      updatedAt: isImproved ? Date.now() : prev?.updatedAt || Date.now()
+    };
+
+    if (cleanNick === this.nickname) {
+      this.bestStair = nextStair;
+      this.bestIQ = nextIQ;
+      localStorage.setItem('2jun_best_stair', String(this.bestStair));
+      localStorage.setItem('2jun_best_iq', String(this.bestIQ));
+      if (this.elBestCount) this.elBestCount.textContent = this.bestStair;
+    }
+
+    this.saveLocalRankings();
+    this.renderRankingBoards();
+
+    if ((pushOnline || isImproved) && nextStair > 0) {
+      this.postScoreOnline(this.rankingsMap[cleanNick]);
+    }
+  }
+
+  async postScoreOnline(entry) {
+    if (!entry || !entry.nick || entry.stair <= 0) return;
+    const postKey = `${entry.nick}:${entry.stair}:${entry.iq}`;
+    if (this.lastPostedKey === postKey) return;
+    this.lastPostedKey = postKey;
+
+    try {
+      await fetch(this.rankingEndpoint, {
+        method: 'POST',
+        body: JSON.stringify({
+          t: 'rank',
+          nick: entry.nick,
+          stair: entry.stair,
+          iq: entry.iq,
+          ts: entry.updatedAt || Date.now()
+        })
+      });
+    } catch (_) {
+      // 오프라인 또는 네트워크 제한 시 로컬 랭킹 유지
+    }
+  }
+
+  async fetchOnlineRankings(showFeedback = false) {
+    const syncBadge = document.getElementById('ranking-sync-badge');
+    const refreshBtn = document.getElementById('btn-refresh-ranking');
+    if (showFeedback && refreshBtn) {
+      refreshBtn.textContent = '⏳ 갱신중...';
+    }
+    if (syncBadge) {
+      syncBadge.textContent = '동기화중';
+    }
+
+    try {
+      const res = await fetch(`${this.rankingEndpoint}/json?poll=1&since=all`);
+      if (res.ok) {
+        const text = await res.text();
+        const lines = text.split('\n');
+        lines.forEach((line) => {
+          const trimmed = line.trim();
+          if (!trimmed) return;
+          try {
+            const evt = JSON.parse(trimmed);
+            if (evt && evt.event === 'message' && evt.message) {
+              const data = JSON.parse(evt.message);
+              if (data && typeof data.nick === 'string' && data.nick.trim()) {
+                const rNick = data.nick.trim().slice(0, 12);
+                const rStair = Math.max(0, Math.floor(Number(data.stair) || 0));
+                const rIQ = Math.max(0, Math.floor(Number(data.iq) || 0));
+                const prev = this.rankingsMap[rNick];
+                if (
+                  !prev ||
+                  rStair > (prev.stair || 0) ||
+                  (rStair === (prev.stair || 0) && rIQ > (prev.iq || 0))
+                ) {
+                  this.rankingsMap[rNick] = {
+                    nick: rNick,
+                    stair: Math.max(prev?.stair || 0, rStair),
+                    iq: Math.max(prev?.iq || 0, rIQ),
+                    updatedAt: Number(data.ts) || (evt.time ? evt.time * 1000 : Date.now())
+                  };
+                }
+              }
+            }
+          } catch (_) {}
+        });
+
+        // 내 닉네임의 온라인 기록과 로컬 기록 동기화
+        if (this.nickname && this.rankingsMap[this.nickname]) {
+          const myRec = this.rankingsMap[this.nickname];
+          if (myRec.stair > this.bestStair || myRec.iq > this.bestIQ) {
+            this.bestStair = Math.max(this.bestStair, myRec.stair);
+            this.bestIQ = Math.max(this.bestIQ, myRec.iq);
+            localStorage.setItem('2jun_best_stair', String(this.bestStair));
+            localStorage.setItem('2jun_best_iq', String(this.bestIQ));
+            if (this.elBestCount) this.elBestCount.textContent = this.bestStair;
+          } else if (this.bestStair > myRec.stair) {
+            myRec.stair = this.bestStair;
+            myRec.iq = Math.max(myRec.iq, this.bestIQ);
+            this.postScoreOnline(myRec);
+          }
+        }
+
+        this.saveLocalRankings();
+        this.renderRankingBoards();
+        if (syncBadge) syncBadge.textContent = '실시간 연동됨';
+      }
+    } catch (_) {
+      if (syncBadge) syncBadge.textContent = '로컬 저장됨';
+    } finally {
+      if (showFeedback && refreshBtn) {
+        refreshBtn.textContent = '🔄 새로고침';
+      }
+    }
+  }
+
+  getSortedRankings() {
+    const list = Object.values(this.rankingsMap).filter(
+      (item) => item && typeof item.nick === 'string' && item.nick.trim().length > 0
+    );
+    list.sort((a, b) => {
+      if ((b.stair || 0) !== (a.stair || 0)) return (b.stair || 0) - (a.stair || 0);
+      if ((b.iq || 0) !== (a.iq || 0)) return (b.iq || 0) - (a.iq || 0);
+      return (a.updatedAt || 0) - (b.updatedAt || 0);
+    });
+    return list;
+  }
+
+  renderRankingBoards() {
+    const sorted = this.getSortedRankings();
+    const myIndex = this.nickname ? sorted.findIndex((r) => r.nick === this.nickname) : -1;
+    const myRank = myIndex >= 0 ? myIndex + 1 : null;
+
+    // 1) 시작 화면 닉네임 및 내 기록 요약
+    const startNickEl = document.getElementById('start-current-nick');
+    if (startNickEl) {
+      startNickEl.textContent = this.nickname || '미등록';
+    }
+
+    const startSummaryEl = document.getElementById('start-my-rank-summary');
+    if (startSummaryEl) {
+      if (this.nickname) {
+        const rankStr = myRank ? `현재 <strong>${myRank}위</strong> / 총 ${sorted.length}명` : '순위 집계중';
+        startSummaryEl.innerHTML = `
+          <span>🏅 <strong>${this.escapeHTML(this.nickname)}</strong>님 최고: <strong>${this.bestStair}계단</strong> (IQ ${this.bestIQ})</span>
+          <span>${rankStr}</span>
+        `;
+      } else {
+        startSummaryEl.innerHTML = `<span>닉네임을 입력하면 내 최고 스코어와 순위가 기록됩니다!</span>`;
+      }
+    }
+
+    // 2) 시작 화면 내장 랭킹 리스트 렌더링
+    const startListEl = document.getElementById('start-ranking-list');
+    if (startListEl) {
+      this.populateRankingListDOM(startListEl, sorted, 30);
+    }
+
+    // 3) 전체 랭킹 모달 내 기록 배너 & 전체 리스트 렌더링
+    const modalMyRankBox = document.getElementById('modal-my-rank-box');
+    if (modalMyRankBox) {
+      if (this.nickname) {
+        const rankText = myRank ? `🏆 전체 ${myRank}위 (총 ${sorted.length}명)` : '순위 집계중';
+        modalMyRankBox.innerHTML = `
+          <div>👤 <strong>${this.escapeHTML(this.nickname)}</strong>님의 최고 기록</div>
+          <div><strong>${this.bestStair}계단</strong> (최고 IQ ${this.bestIQ}) · <strong>${rankText}</strong></div>
+        `;
+      } else {
+        modalMyRankBox.innerHTML = `<div>닉네임을 먼저 등록해주세요!</div>`;
+      }
+    }
+
+    const modalListEl = document.getElementById('modal-ranking-list');
+    if (modalListEl) {
+      this.populateRankingListDOM(modalListEl, sorted, 100);
+    }
+
+    // 4) 추락(다시시작) 팝업 내 최고 기록 & 순위 표시 업데이트
+    const failBestEl = document.getElementById('fail-best-stair');
+    if (failBestEl) failBestEl.textContent = this.bestStair;
+    const failRankEl = document.getElementById('fail-my-rank');
+    if (failRankEl) {
+      failRankEl.textContent = myRank ? `현재 랭킹 ${myRank}위 / ${sorted.length}명` : '랭킹 등록 완료';
+    }
+  }
+
+  populateRankingListDOM(container, sortedList, limit = 50) {
+    container.innerHTML = '';
+    if (!sortedList || sortedList.length === 0) {
+      container.innerHTML = `<div class="ranking-empty">아직 등록된 랭킹 기록이 없습니다.<br/>첫 번째 1위 주인공이 되어보세요!</div>`;
+      return;
+    }
+
+    const slice = sortedList.slice(0, limit);
+    slice.forEach((item, idx) => {
+      const rank = idx + 1;
+      const isMe = this.nickname && item.nick === this.nickname;
+      const stageIdx = getStageIndexForIQ(item.iq || 0);
+      const stage = STAGES[stageIdx] || STAGES[0];
+      const gradeNum = getGradeForIQ(item.iq || 0);
+
+      let medal = `${rank}위`;
+      if (rank === 1) medal = '🥇 1위';
+      else if (rank === 2) medal = '🥈 2위';
+      else if (rank === 3) medal = '🥉 3위';
+
+      const row = document.createElement('div');
+      row.className = `ranking-row${rank <= 3 ? ` rank-top-${rank}` : ''}${isMe ? ' is-me' : ''}`;
+      row.innerHTML = `
+        <div class="rank-left">
+          <span class="rank-num">${medal}</span>
+          <span class="rank-nick">${this.escapeHTML(item.nick)}</span>
+          ${isMe ? '<span class="me-tag">나</span>' : ''}
+          <span class="rank-stage-pill">${stage.emoji} 초${gradeNum}</span>
+        </div>
+        <div class="rank-right">
+          <span class="rank-stair-score">${item.stair || 0}계단</span>
+          <span class="rank-iq-sub">IQ ${item.iq || 0}</span>
+        </div>
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  escapeHTML(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  openRankingModal() {
+    if (!this.elRankingModal) return;
+    this.renderRankingBoards();
+    this.elRankingModal.classList.add('active');
+    this.fetchOnlineRankings(true);
+  }
+
+  closeRankingModal() {
+    this.elRankingModal?.classList.remove('active');
   }
 
   // 아이템 상점 모달 (학년 승급 시 자동 오픈 또는 버튼 클릭 오픈)
@@ -2062,9 +2527,12 @@ class InfiniteMathStairsGame {
     this.elStartModal.classList.remove('active');
     this.elQuizModal.classList.remove('active');
     this.elQuizModal.style.display = 'none';
+    document.getElementById('controls')?.classList.remove('quiz-disabled');
     this.elFailModal.classList.remove('active');
     this.elShopModal.classList.remove('active');
     this.elOptionsModal.classList.remove('active');
+    this.elRankingModal?.classList.remove('active');
+    this.elNicknameModal?.classList.remove('active');
     this.elEvoBanner.classList.add('hidden');
 
     this.currentStair = 0;
@@ -2075,6 +2543,7 @@ class InfiniteMathStairsGame {
     this.speedCombo = 0;
     this.particles = [];
     this.rainbowTrails = [];
+    this.stairEffects = [];
     this.shockwaves = [];
     this.floatingTexts = [];
     this.afterimages = [];
@@ -2093,10 +2562,20 @@ class InfiniteMathStairsGame {
     const currentGrade = getGradeForIQ(this.iq);
 
     this.elStairCount.textContent = this.currentStair;
+    let recordUpdated = false;
     if (this.currentStair > this.bestStair) {
       this.bestStair = this.currentStair;
       localStorage.setItem('2jun_best_stair', String(this.bestStair));
       this.elBestCount.textContent = this.bestStair;
+      recordUpdated = true;
+    }
+    if (this.iq > this.bestIQ) {
+      this.bestIQ = this.iq;
+      localStorage.setItem('2jun_best_iq', String(this.bestIQ));
+      recordUpdated = true;
+    }
+    if (recordUpdated && this.nickname) {
+      this.updateRankingEntry(this.nickname, this.bestStair, this.bestIQ, false);
     }
 
     this.elCoinCount.textContent = this.coins;
@@ -2104,7 +2583,8 @@ class InfiniteMathStairsGame {
     if (failCoinsEl) failCoinsEl.textContent = this.coins;
     this.elCharBadge.textContent = stage.badge;
     this.elAvatarEmoji.textContent = stage.emoji;
-    this.elStatusName.textContent = `${stage.name} (IQ ${this.iq})`;
+    const nickPrefix = this.nickname ? `[${this.nickname}] ` : '';
+    this.elStatusName.textContent = `${nickPrefix}${stage.name} (IQ ${this.iq})`;
     this.elStatusDesc.textContent = stage.desc;
 
     // 보유 생명 및 퀵 슬롯 수량 업데이트
@@ -2144,77 +2624,243 @@ class InfiniteMathStairsGame {
     this.elStairsToQuiz.textContent = `${remainingStairs}계단 남음`;
   }
 
-  // 신발 꾸미기 효과 및 방향 전환 특수효과 파티클 스폰
+  // 신발 & 초신성 왕관 꾸미기 효과 및 방향 전환 특수효과 파티클 스폰 (계단 오를 때마다 화려하게 폭발!)
   spawnStepEffects(stairX, stairY, isTurn, isFast) {
     const worldX = stairX * 54;
     const worldY = -stairY * 34;
 
-    // 1) 무지개신발: 지나온 계단에 무지개 자국 남기기 (오래된 것부터 서서히 사라짐)
+    // 1) 무지개신발: 지나온 계단에 화려한 네온 프리즘 무지개 다리 & 아치 남기기
     if (this.equipped.shoe === 'shoe_rainbow') {
       this.rainbowTrails.push({
         x: worldX,
         y: worldY,
-        alpha: 0.95,
-        hue: (this.currentStair * 28) % 360
+        alpha: 1.0,
+        hue: (this.currentStair * 32) % 360,
+        createdTick: this.tick
       });
     }
 
-    // 2) 장착한 신발별 발밑 파티클 생성
+    // 2) 장착한 신발별 계단 임팩트 기둥/회오리/낙뢰 + 충격파 + 고밀도 원소 파티클 폭발!
     const shoe = this.equipped.shoe;
     if (shoe === 'shoe_wind') {
-      for (let i = 0; i < 8; i++) {
+      // 계단 위 에메랄드 폭풍 회오리(Tornado Vortex) 생성
+      this.stairEffects.push({
+        type: 'wind_vortex',
+        x: worldX,
+        y: worldY,
+        alpha: 1.0,
+        progress: 0,
+        decay: 0.032
+      });
+
+      // 매 스텝 이중 바람 소용돌이 충격파
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY,
+        radius: 6,
+        maxRadius: 56,
+        color: '#22d3ee',
+        glow: '#67e8f9',
+        lineWidth: 4,
+        alpha: 0.95
+      });
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY - 14,
+        radius: 4,
+        maxRadius: 42,
+        color: '#34d399',
+        glow: '#a7f3d0',
+        lineWidth: 2.5,
+        alpha: 0.85
+      });
+
+      // 초승달 칼바람(wind_blade) & 소용돌이 바람 궤적(wind_swirl) 20개 스폰
+      for (let i = 0; i < 20; i++) {
+        const isBlade = i < 10;
+        const ang = (Math.PI * 2 * i) / 10 + Math.random() * 0.4;
         this.particles.push({
-          x: worldX + randInt(-18, 18),
-          y: worldY + randInt(-6, 4),
-          vx: -this.playerFacing * (2 + Math.random() * 4),
-          vy: -0.5 - Math.random() * 2,
-          size: 4 + Math.random() * 5,
-          color: i % 2 === 0 ? '#22d3ee' : '#a5f3fc',
+          x: worldX + randInt(-24, 24),
+          y: worldY + randInt(-12, 4),
+          vx: isBlade ? Math.cos(ang) * (2.5 + Math.random() * 3.5) : -this.playerFacing * (2 + Math.random() * 4.5),
+          vy: -1.8 - Math.random() * 4.2,
+          size: isBlade ? 8 + Math.random() * 6 : 5 + Math.random() * 5,
+          color: ['#22d3ee', '#67e8f9', '#34d399', '#ecfeff'][i % 4],
+          glow: '#22d3ee',
+          rot: Math.random() * Math.PI * 2,
+          vRot: (Math.random() - 0.5) * 0.35,
           alpha: 1,
-          decay: 0.045,
-          type: 'wind'
+          decay: 0.032,
+          type: isBlade ? 'wind_blade' : 'wind_swirl'
         });
       }
     } else if (shoe === 'shoe_fire') {
-      for (let i = 0; i < 10; i++) {
+      // 계단 위 치솟는 화염 불기둥(Fire Pillar) & 마그마 분출 생성
+      this.stairEffects.push({
+        type: 'fire_pillar',
+        x: worldX,
+        y: worldY,
+        alpha: 1.0,
+        progress: 0,
+        decay: 0.03
+      });
+
+      // 매 스텝 화염 폭발 충격파
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY,
+        radius: 8,
+        maxRadius: 60,
+        color: '#f97316',
+        glow: '#ef4444',
+        lineWidth: 4.5,
+        alpha: 1.0
+      });
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY - 8,
+        radius: 4,
+        maxRadius: 40,
+        color: '#fef08a',
+        glow: '#facc15',
+        lineWidth: 3,
+        alpha: 0.9
+      });
+
+      // 일렁이는 화염 혀(flame) & 마그마 불티 24개 스폰
+      for (let i = 0; i < 24; i++) {
+        const isFlame = i < 16;
         this.particles.push({
-          x: worldX + randInt(-16, 16),
-          y: worldY + randInt(-4, 4),
-          vx: (Math.random() - 0.5) * 3,
-          vy: -1.5 - Math.random() * 3.5,
-          size: 5 + Math.random() * 6,
-          color: ['#ef4444', '#f97316', '#fde047'][i % 3],
+          x: worldX + randInt(-26, 26),
+          y: worldY + randInt(-6, 4),
+          vx: (Math.random() - 0.5) * 4.2,
+          vy: -2.2 - Math.random() * 5.2,
+          size: isFlame ? 8 + Math.random() * 8 : 3.5 + Math.random() * 4,
+          color: ['#ef4444', '#f97316', '#fde047', '#fef08a'][i % 4],
+          glow: '#f97316',
+          rot: (Math.random() - 0.5) * 0.5,
+          vRot: (Math.random() - 0.5) * 0.1,
           alpha: 1,
-          decay: 0.04,
-          type: 'fire'
+          decay: isFlame ? 0.032 : 0.026,
+          type: isFlame ? 'flame' : 'spark'
         });
       }
     } else if (shoe === 'shoe_lightning') {
-      for (let i = 0; i < 7; i++) {
+      // 계단 위 하늘에서 내리꽂히는 천둥 낙뢰(Thunderbolt Strike) 생성!
+      const boltSegments = [];
+      let bx = worldX + randInt(-14, 14);
+      let by = worldY - 125;
+      const steps = 7;
+      for (let s = 1; s <= steps; s++) {
+        const nx = s === steps ? worldX : worldX + randInt(-24, 24);
+        const ny = worldY - 125 + (125 * s) / steps;
+        boltSegments.push({ x1: bx, y1: by, x2: nx, y2: ny });
+        bx = nx;
+        by = ny;
+      }
+      this.stairEffects.push({
+        type: 'lightning_strike',
+        x: worldX,
+        y: worldY,
+        segments: boltSegments,
+        alpha: 1.0,
+        progress: 0,
+        decay: 0.042
+      });
+
+      // 매 스텝 전격 플라즈마 충격파
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY,
+        radius: 8,
+        maxRadius: 64,
+        color: '#facc15',
+        glow: '#fef08a',
+        lineWidth: 4,
+        alpha: 1.0
+      });
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY - 6,
+        radius: 5,
+        maxRadius: 46,
+        color: '#38bdf8',
+        glow: '#67e8f9',
+        lineWidth: 3,
+        alpha: 0.9
+      });
+
+      // 지그재그 번개 줄기(lightning_bolt) & 고전압 스파크 22개 스폰
+      for (let i = 0; i < 22; i++) {
+        const ang = (Math.PI * 2 * i) / 22 + (Math.random() - 0.5) * 0.3;
+        const spd = 2.5 + Math.random() * 6.5;
         this.particles.push({
-          x: worldX + randInt(-15, 15),
-          y: worldY + randInt(-10, 5),
-          vx: (Math.random() - 0.5) * 6,
-          vy: (Math.random() - 0.5) * 6,
-          size: 3 + Math.random() * 4,
-          color: i % 2 === 0 ? '#facc15' : '#38bdf8',
+          x: worldX + randInt(-20, 20),
+          y: worldY + randInt(-18, 4),
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 1.5,
+          size: 7 + Math.random() * 7,
+          color: ['#fef08a', '#facc15', '#38bdf8', '#ffffff'][i % 4],
+          glow: i % 2 === 0 ? '#facc15' : '#38bdf8',
+          rot: ang,
+          vRot: (Math.random() - 0.5) * 0.4,
           alpha: 1,
-          decay: 0.06,
-          type: 'spark'
+          decay: 0.042,
+          type: i < 14 ? 'lightning_bolt' : 'spark'
         });
       }
     } else if (shoe === 'shoe_rainbow') {
-      for (let i = 0; i < 10; i++) {
+      const baseHue = (this.currentStair * 32) % 360;
+      // 계단 위 프리즘 무지개 분수 & 아치 효과
+      this.stairEffects.push({
+        type: 'rainbow_burst',
+        x: worldX,
+        y: worldY,
+        hue: baseHue,
+        alpha: 1.0,
+        progress: 0,
+        decay: 0.03
+      });
+
+      // 이중 프리즘 무지개 충격파
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY,
+        radius: 8,
+        maxRadius: 64,
+        color: `hsl(${baseHue}, 95%, 60%)`,
+        glow: `hsl(${(baseHue + 60) % 360}, 95%, 65%)`,
+        lineWidth: 4.5,
+        alpha: 1.0
+      });
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY - 10,
+        radius: 4,
+        maxRadius: 46,
+        color: `hsl(${(baseHue + 180) % 360}, 95%, 65%)`,
+        glow: '#ffffff',
+        lineWidth: 3,
+        alpha: 0.9
+      });
+
+      // 오색찬란한 4각/5각 별빛(star4, star5) 분수 24개 폭발!
+      for (let i = 0; i < 24; i++) {
+        const pHue = (baseHue + i * 18) % 360;
+        const c = `hsl(${pHue}, 95%, 62%)`;
         this.particles.push({
-          x: worldX + randInt(-18, 18),
-          y: worldY + randInt(-6, 4),
-          vx: (Math.random() - 0.5) * 4,
-          vy: -1 - Math.random() * 3,
-          size: 4 + Math.random() * 5,
-          color: `hsl(${randInt(0, 360)}, 95%, 60%)`,
+          x: worldX + randInt(-26, 26),
+          y: worldY + randInt(-10, 4),
+          vx: (Math.random() - 0.5) * 6.2,
+          vy: -1.8 - Math.random() * 5.2,
+          size: 6 + Math.random() * 6,
+          color: c,
+          glow: c,
+          rot: Math.random() * Math.PI * 2,
+          vRot: (Math.random() - 0.5) * 0.22,
           alpha: 1,
-          decay: 0.035,
-          type: 'star'
+          decay: 0.028,
+          type: i % 2 === 0 ? 'star4' : 'star5'
         });
       }
     } else {
@@ -2234,32 +2880,106 @@ class InfiniteMathStairsGame {
       }
     }
 
-    // 3) 황금 날개 장착 시 황금 깃털 파티클
-    if (this.equipped.accessory === 'wing_gold') {
-      for (let i = 0; i < 3; i++) {
+    // 3) 초신성 네온 왕관(aura_crown) 장착 시: 계단 오를 때마다 초신성 빛기둥 + 마법진 + 별빛/보석 대폭발!
+    if (this.equipped.accessory === 'aura_crown') {
+      // 계단 위 초신성 빛기둥(Supernova Pillar) & 로열 스타 마법진 생성
+      this.stairEffects.push({
+        type: 'crown_supernova',
+        x: worldX,
+        y: worldY,
+        alpha: 1.0,
+        progress: 0,
+        decay: 0.03
+      });
+
+      // 발밑 & 머리 위 왕관에서 동시에 퍼져나가는 초신성 네온 충격파!
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY - 4,
+        radius: 10,
+        maxRadius: 68,
+        color: '#38bdf8',
+        glow: '#67e8f9',
+        lineWidth: 4,
+        alpha: 0.95
+      });
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY - 88,
+        radius: 6,
+        maxRadius: 52,
+        color: '#fde047',
+        glow: '#f472b6',
+        lineWidth: 3.5,
+        alpha: 0.95
+      });
+
+      // 초신성 4각 별빛(star4) & 로열 다이아몬드 보석(crown_gem) 22개 방사형 폭발!
+      const crownPalette = ['#38bdf8', '#fde047', '#f472b6', '#c084fc', '#67e8f9', '#ffffff'];
+      for (let i = 0; i < 22; i++) {
+        const fromCrown = i < 12;
+        const originY = fromCrown ? worldY - 84 : worldY - 18;
+        const ang = (Math.PI * 2 * i) / (fromCrown ? 12 : 10) + Math.random() * 0.25;
+        const spd = (fromCrown ? 2.2 : 3.0) + Math.random() * 4.2;
+        const col = crownPalette[i % crownPalette.length];
         this.particles.push({
-          x: worldX - this.playerFacing * 14 + randInt(-8, 8),
-          y: worldY - 35 + randInt(-8, 8),
-          vx: -this.playerFacing * (1 + Math.random() * 2),
-          vy: 0.5 + Math.random() * 1.2,
-          size: 4,
-          color: '#fde047',
+          x: worldX + randInt(-14, 14),
+          y: originY + randInt(-8, 8),
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 1.2,
+          size: i % 3 === 0 ? 5.5 + Math.random() * 4 : 7 + Math.random() * 6,
+          color: col,
+          glow: col,
+          rot: Math.random() * Math.PI,
+          vRot: (Math.random() - 0.5) * 0.2,
           alpha: 1,
-          decay: 0.03,
+          decay: 0.028,
+          type: i % 3 === 0 ? 'crown_gem' : 'star4'
+        });
+      }
+    }
+
+    // 4) 황금 날개(wing_gold) 장착 시 황금 깃털 & 천상의 파동
+    if (this.equipped.accessory === 'wing_gold') {
+      this.shockwaves.push({
+        x: worldX,
+        y: worldY - 32,
+        radius: 6,
+        maxRadius: 48,
+        color: '#fde047',
+        glow: '#fef08a',
+        lineWidth: 3,
+        alpha: 0.85
+      });
+      for (let i = 0; i < 8; i++) {
+        this.particles.push({
+          x: worldX - this.playerFacing * 14 + randInt(-16, 16),
+          y: worldY - 36 + randInt(-14, 10),
+          vx: -this.playerFacing * (1.2 + Math.random() * 3) + (Math.random() - 0.5) * 2,
+          vy: -1.0 + Math.random() * 2.5,
+          size: 6 + Math.random() * 4,
+          color: i % 2 === 0 ? '#fde047' : '#fef08a',
+          glow: '#facc15',
+          rot: Math.random() * Math.PI,
+          vRot: (Math.random() - 0.5) * 0.12,
+          alpha: 1,
+          decay: 0.026,
           type: 'feather'
         });
       }
     }
 
-    // 4) 빠른 속도 유지 중 방향 전환(TURN) 시 익사이팅 특수효과 폭발!
+    // 5) 빠른 속도 유지 중 방향 전환(TURN) 시 익사이팅 특수효과 폭발!
     if (isTurn) {
       const ringColor = isFast ? '#fde047' : '#fb7185';
       this.shockwaves.push({
         x: worldX,
         y: worldY - 12,
         radius: 8,
-        maxRadius: isFast ? 72 : 46,
+        maxRadius: isFast ? 76 : 48,
         color: ringColor,
+        glow: ringColor,
+        lineWidth: 4,
         alpha: 1
       });
 
@@ -2274,6 +2994,7 @@ class InfiniteMathStairsGame {
           vy: Math.sin(angle) * spd,
           size: isFast ? 5 : 3.5,
           color: ['#fde047', '#fb7185', '#38bdf8', '#a855f7'][i % 4],
+          glow: '#fde047',
           alpha: 1,
           decay: 0.045,
           type: 'spark'
@@ -2361,6 +3082,27 @@ class InfiniteMathStairsGame {
         });
       }
 
+      // 50계단마다 시간대(아침 -> 한낮 -> 오후 -> 저녁 노을 -> 밤 -> 새벽 -> 아침) 변화 알림 플로팅 텍스트!
+      if (this.currentStair > 0 && this.currentStair % 50 === 0) {
+        const phaseIdx = Math.floor(this.currentStair / 50) % 6;
+        const phaseLabels = [
+          '🌅 상쾌한 아침이 밝았습니다!',
+          '☀️ 눈부신 한낮의 열기구 하늘!',
+          '🌤️ 따스한 오후의 천공 풍차섬!',
+          '🌇 붉은 노을이 지는 저녁!',
+          '🌃 별과 풍등이 빛나는 밤하늘!',
+          '🌌 오로라가 일렁이는 새벽녘!'
+        ];
+        this.floatingTexts.push({
+          x: nextStairObj.x * 54,
+          y: -nextStairObj.y * 34 - 120,
+          text: phaseLabels[phaseIdx],
+          color: '#38bdf8',
+          alpha: 1,
+          vy: -1.3
+        });
+      }
+
       // 스태미나 회복
       this.stamina = Math.min(this.maxStamina, this.stamina + 14);
       this.ensureStairsAhead();
@@ -2406,6 +3148,18 @@ class InfiniteMathStairsGame {
     sfx.setBGMMode('QUIZ');
     sfx.quizPop();
 
+    // 기존에 포커스된 버튼이 있으면 해제하여 Space/Enter 연타로 버튼이 눌리는 것을 방지
+    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+      document.activeElement.blur();
+    }
+
+    // 계단 빠르게 오르다 문제창이 떴을 때 관성 연타로 오답 처리되는 현상 방지를 위해 0.65초 안전 잠금 적용!
+    this.quizUnlockTime = performance.now() + 650;
+
+    // 퀴즈 중에는 하단 방향전환/오르기 버튼 영역 터치 비활성화
+    const controlsEl = document.getElementById('controls');
+    if (controlsEl) controlsEl.classList.add('quiz-disabled');
+
     const quiz = generateMathProblemByIQ(this.iq);
     this.activeQuiz = quiz;
     this.quizTimeRemaining = quiz.timeLimit;
@@ -2428,7 +3182,7 @@ class InfiniteMathStairsGame {
     const questionText = document.getElementById('quiz-question-text');
     if (questionText) questionText.textContent = quiz.question;
     const questionSub = document.getElementById('quiz-question-sub');
-    if (questionSub) questionSub.textContent = `${quiz.subHint} (제한시간 ${quiz.timeLimit}초 / 틀려도 떨어지지 않아요!)`;
+    if (questionSub) questionSub.textContent = `${quiz.subHint} (제한시간 ${quiz.timeLimit}초 / 보기 버튼만 선택됩니다!)`;
 
     const hintBox = document.getElementById('quiz-hint-box');
     if (hintBox) {
@@ -2443,10 +3197,31 @@ class InfiniteMathStairsGame {
       choicesBox.innerHTML = '';
       quiz.choices.forEach((choiceVal, idx) => {
         const btn = document.createElement('button');
-        btn.className = 'choice-btn';
+        btn.type = 'button';
+        btn.className = 'choice-btn quiz-safety-locked';
         btn.dataset.val = choiceVal;
+        btn.dataset.armed = '0';
         btn.textContent = `${idx + 1}번) ${choiceVal}`;
-        btn.addEventListener('click', () => this.checkQuizAnswer(choiceVal));
+
+        // 오직 잠금이 해제된 뒤 이 보기 버튼 위에서 직접 pointerdown이 시작되고 클릭된 경우에만 정답 판정 실행!
+        btn.addEventListener('pointerdown', (e) => {
+          e.stopPropagation();
+          if (this.state !== 'QUIZ' || performance.now() < this.quizUnlockTime) {
+            btn.dataset.armed = '0';
+            return;
+          }
+          btn.dataset.armed = '1';
+        });
+
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (this.state !== 'QUIZ' || performance.now() < this.quizUnlockTime) return;
+          if (btn.dataset.armed !== '1') return;
+          btn.dataset.armed = '0';
+          this.checkQuizAnswer(choiceVal);
+        });
+
         choicesBox.appendChild(btn);
       });
     }
@@ -2459,6 +3234,10 @@ class InfiniteMathStairsGame {
 
   checkQuizAnswer(userValue) {
     if (this.state !== 'QUIZ' || !this.activeQuiz) return;
+    if (performance.now() < this.quizUnlockTime) return;
+
+    const controlsEl = document.getElementById('controls');
+    if (controlsEl) controlsEl.classList.remove('quiz-disabled');
 
     if (this.elQuizModal) {
       this.elQuizModal.style.display = 'none';
@@ -2535,12 +3314,25 @@ class InfiniteMathStairsGame {
   triggerBaboReset(reasonText, solutionText = '') {
     const reachedStair = this.currentStair;
     const reachedIQ = this.iq;
+
+    // 추락 시 현재 닉네임의 최고 스코어 저장 및 실시간 랭킹 서버 반영
+    if (this.nickname) {
+      this.updateRankingEntry(
+        this.nickname,
+        Math.max(this.bestStair, reachedStair),
+        Math.max(this.bestIQ, reachedIQ),
+        true
+      );
+      this.fetchOnlineRankings();
+    }
+
     this.currentStair = 0;
     this.iq = 0;
     this.state = 'FAIL';
     sfx.stopBGM();
     sfx.baboFail();
     this.updateHUD();
+    this.renderRankingBoards();
 
     document.getElementById('fail-reason-text').textContent = reasonText;
     document.getElementById('fail-reached-stair').textContent = reachedStair;
@@ -2575,30 +3367,127 @@ class InfiniteMathStairsGame {
 
     // 무지개 신발 잔상 자국 자연스럽게 소멸
     for (let i = this.rainbowTrails.length - 1; i >= 0; i--) {
-      this.rainbowTrails[i].alpha -= dt * 0.32;
+      this.rainbowTrails[i].alpha -= dt * 0.25;
       if (this.rainbowTrails[i].alpha <= 0) {
         this.rainbowTrails.splice(i, 1);
       }
     }
 
-    // 파티클 업데이트
+    // 계단 위 원소/초신성 기둥 & 회오리 & 낙뢰 이펙트 업데이트
+    for (let i = this.stairEffects.length - 1; i >= 0; i--) {
+      const se = this.stairEffects[i];
+      se.progress += dt * 2.4;
+      se.alpha -= se.decay;
+      if (se.alpha <= 0) {
+        this.stairEffects.splice(i, 1);
+      }
+    }
+
+    // 파티클 업데이트 (위치 + 회전)
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       p.x += p.vx;
       p.y += p.vy;
+      if (p.vRot) p.rot = (p.rot || 0) + p.vRot;
       p.alpha -= p.decay;
       if (p.alpha <= 0) {
         this.particles.splice(i, 1);
       }
     }
 
-    // 방향전환 충격파 링 업데이트
+    // 충격파 링 업데이트
     for (let i = this.shockwaves.length - 1; i >= 0; i--) {
       const sw = this.shockwaves[i];
-      sw.radius += (sw.maxRadius - sw.radius) * 0.25;
-      sw.alpha -= 0.065;
+      sw.radius += (sw.maxRadius - sw.radius) * 0.24;
+      sw.alpha -= 0.055;
       if (sw.alpha <= 0) {
         this.shockwaves.splice(i, 1);
+      }
+    }
+
+    // 플레이 중 장착 아이템 상시 앰비언트(Ambient) 오라 파티클 생성
+    if (this.state === 'PLAYING' && this.tick % 3 === 0) {
+      const curS = this.stairs[this.currentStair] || { x: 0, y: 0 };
+      const wx = curS.x * 54;
+      const wy = -curS.y * 34;
+
+      if (this.equipped.accessory === 'aura_crown') {
+        const cols = ['#38bdf8', '#fde047', '#f472b6', '#67e8f9'];
+        const col = cols[this.tick % cols.length];
+        this.particles.push({
+          x: wx + randInt(-26, 26),
+          y: wy - randInt(20, 96),
+          vx: (Math.random() - 0.5) * 1.2,
+          vy: -0.8 - Math.random() * 1.5,
+          size: 4.5 + Math.random() * 3.5,
+          color: col,
+          glow: col,
+          rot: Math.random() * Math.PI,
+          vRot: 0.1,
+          alpha: 0.9,
+          decay: 0.04,
+          type: 'star4'
+        });
+      }
+
+      if (this.equipped.shoe === 'shoe_fire') {
+        this.particles.push({
+          x: wx + randInt(-14, 14),
+          y: wy + randInt(-4, 2),
+          vx: (Math.random() - 0.5) * 1.2,
+          vy: -1.5 - Math.random() * 2,
+          size: 5 + Math.random() * 4,
+          color: this.tick % 2 === 0 ? '#f97316' : '#fde047',
+          glow: '#ef4444',
+          alpha: 0.85,
+          decay: 0.05,
+          type: 'flame'
+        });
+      } else if (this.equipped.shoe === 'shoe_lightning') {
+        this.particles.push({
+          x: wx + randInt(-16, 16),
+          y: wy + randInt(-14, 2),
+          vx: (Math.random() - 0.5) * 3,
+          vy: (Math.random() - 0.5) * 3,
+          size: 5 + Math.random() * 4,
+          color: this.tick % 2 === 0 ? '#fef08a' : '#38bdf8',
+          glow: '#facc15',
+          rot: Math.random() * Math.PI * 2,
+          alpha: 0.9,
+          decay: 0.07,
+          type: 'lightning_bolt'
+        });
+      } else if (this.equipped.shoe === 'shoe_wind') {
+        this.particles.push({
+          x: wx + randInt(-16, 16),
+          y: wy + randInt(-8, 2),
+          vx: -this.playerFacing * (1.5 + Math.random() * 2),
+          vy: -0.8 - Math.random() * 1.5,
+          size: 5 + Math.random() * 4,
+          color: '#67e8f9',
+          glow: '#22d3ee',
+          rot: Math.random() * Math.PI,
+          vRot: 0.2,
+          alpha: 0.85,
+          decay: 0.05,
+          type: 'wind_blade'
+        });
+      } else if (this.equipped.shoe === 'shoe_rainbow') {
+        const c = `hsl(${(this.tick * 12) % 360}, 95%, 62%)`;
+        this.particles.push({
+          x: wx + randInt(-18, 18),
+          y: wy + randInt(-10, 2),
+          vx: (Math.random() - 0.5) * 1.8,
+          vy: -1 - Math.random() * 2,
+          size: 5 + Math.random() * 3,
+          color: c,
+          glow: c,
+          rot: Math.random() * Math.PI,
+          vRot: 0.15,
+          alpha: 0.9,
+          decay: 0.045,
+          type: 'star4'
+        });
       }
     }
 
@@ -2647,7 +3536,13 @@ class InfiniteMathStairsGame {
       }
       this.elStaminaBar.style.width = `${Math.max(0, this.stamina)}%`;
     } else if (this.state === 'QUIZ' && this.activeQuiz) {
-      this.quizTimeRemaining -= dt;
+      // 0.65초 연타 방지 보호 시간이 지나면 보기 버튼 잠금 표시 해제 및 타이머 작동 시작!
+      if (now >= this.quizUnlockTime) {
+        document.querySelectorAll('#quiz-choices .choice-btn.quiz-safety-locked').forEach((btn) => {
+          btn.classList.remove('quiz-safety-locked');
+        });
+        this.quizTimeRemaining -= dt;
+      }
 
       const ceilSec = Math.ceil(this.quizTimeRemaining);
       if (ceilSec <= 5 && ceilSec > 0 && ceilSec !== this.lastSecTick) {
@@ -2661,6 +3556,8 @@ class InfiniteMathStairsGame {
 
       if (this.quizTimeRemaining <= 0) {
         // 시간 초과 시에도 0계단으로 떨어지지 않고 IQ만 동결된 채 계속 등반!
+        const controlsEl = document.getElementById('controls');
+        if (controlsEl) controlsEl.classList.remove('quiz-disabled');
         if (this.elQuizModal) {
           this.elQuizModal.style.display = 'none';
           this.elQuizModal.classList.remove('active');
@@ -2689,36 +3586,487 @@ class InfiniteMathStairsGame {
     this.camY += (targetCamY - this.camY) * 0.24;
   }
 
+  // 두 HEX 색상을 비율 t(0~1)로 부드럽게 보간하는 헬퍼
+  lerpHex(hex1, hex2, t) {
+    const c1 = parseInt(hex1.slice(1), 16);
+    const c2 = parseInt(hex2.slice(1), 16);
+    const r = Math.round(((c1 >> 16) & 255) * (1 - t) + ((c2 >> 16) & 255) * t);
+    const g = Math.round(((c1 >> 8) & 255) * (1 - t) + ((c2 >> 8) & 255) * t);
+    const b = Math.round((c1 & 255) * (1 - t) + (c2 & 255) * t);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  // 50계단마다 순환하며 점점 변하는 시간대(아침 -> 한낮 -> 오후 -> 저녁 노을 -> 밤 -> 새벽 -> 아침) 및 다채로운 풍경 렌더링
   drawBackground(w, h) {
-    const stageIdx = this.getStageIndex();
-    const skyPalettes = [
-      ['#38bdf8', '#bae6fd'],
-      ['#60a5fa', '#dbeafe'],
-      ['#34d399', '#a7f3d0'],
-      ['#fb923c', '#fde68a'],
-      ['#818cf8', '#c7d2fe'],
-      ['#1e1b4b', '#312e81'],
-      ['#090d16', '#1e293b']
+    const timePhases = [
+      {
+        // 0: 아침 (0~49계단, 300~349계단...)
+        name: '🌅 상쾌한 아침',
+        skyTop: '#2563eb',
+        skyMid: '#60a5fa',
+        skyBot: '#fef08a',
+        cloudColor: 'rgba(255, 255, 255, 0.85)',
+        mtnFar: '#64748b',
+        mtnNear: '#334155',
+        cityColor: '#1e293b',
+        sunAlpha: 1,
+        sunYRatio: 0.36,
+        sunColor: '#fde047',
+        moonAlpha: 0,
+        starAlpha: 0,
+        auroraAlpha: 0,
+        windowLit: 0
+      },
+      {
+        // 1: 한낮 (50~99계단, 350~399계단...)
+        name: '☀️ 눈부신 한낮',
+        skyTop: '#0284c7',
+        skyMid: '#38bdf8',
+        skyBot: '#e0f2fe',
+        cloudColor: 'rgba(255, 255, 255, 0.9)',
+        mtnFar: '#38bdf8',
+        mtnNear: '#0284c7',
+        cityColor: '#0f172a',
+        sunAlpha: 1,
+        sunYRatio: 0.19,
+        sunColor: '#fef08a',
+        moonAlpha: 0,
+        starAlpha: 0,
+        auroraAlpha: 0,
+        windowLit: 0
+      },
+      {
+        // 2: 오후 (100~149계단, 400~449계단...)
+        name: '🌤️ 따스한 오후',
+        skyTop: '#1d4ed8',
+        skyMid: '#60a5fa',
+        skyBot: '#fde68a',
+        cloudColor: 'rgba(254, 249, 195, 0.82)',
+        mtnFar: '#475569',
+        mtnNear: '#334155',
+        cityColor: '#1e293b',
+        sunAlpha: 1,
+        sunYRatio: 0.28,
+        sunColor: '#facc15',
+        moonAlpha: 0,
+        starAlpha: 0.08,
+        auroraAlpha: 0,
+        windowLit: 0.15
+      },
+      {
+        // 3: 저녁 노을 (150~199계단, 450~499계단...)
+        name: '🌇 노을 지는 저녁',
+        skyTop: '#311042',
+        skyMid: '#e11d48',
+        skyBot: '#fb923c',
+        cloudColor: 'rgba(253, 164, 175, 0.65)',
+        mtnFar: '#4c1d95',
+        mtnNear: '#31102f',
+        cityColor: '#18091c',
+        sunAlpha: 0.95,
+        sunYRatio: 0.48,
+        sunColor: '#f97316',
+        moonAlpha: 0.25,
+        starAlpha: 0.45,
+        auroraAlpha: 0,
+        windowLit: 0.75
+      },
+      {
+        // 4: 밤 (200~249계단, 500~549계단...)
+        name: '🌃 별이 쏟아지는 밤',
+        skyTop: '#050811',
+        skyMid: '#0f172a',
+        skyBot: '#1e1b4b',
+        cloudColor: 'rgba(148, 163, 184, 0.22)',
+        mtnFar: '#1e1b4b',
+        mtnNear: '#0f172a',
+        cityColor: '#090d16',
+        sunAlpha: 0,
+        sunYRatio: 0.65,
+        sunColor: '#ef4444',
+        moonAlpha: 1,
+        starAlpha: 1,
+        auroraAlpha: 0.25,
+        windowLit: 1
+      },
+      {
+        // 5: 새벽녘 (250~299계단, 550~599계단...)
+        name: '🌌 신비로운 새벽녘',
+        skyTop: '#1e1b4b',
+        skyMid: '#6b21a8',
+        skyBot: '#f472b6',
+        cloudColor: 'rgba(244, 114, 182, 0.45)',
+        mtnFar: '#3b0764',
+        mtnNear: '#1e1b4b',
+        cityColor: '#0f172a',
+        sunAlpha: 0.35,
+        sunYRatio: 0.52,
+        sunColor: '#fb7185',
+        moonAlpha: 0.65,
+        starAlpha: 0.7,
+        auroraAlpha: 0.9,
+        windowLit: 0.55
+      }
     ];
-    const [topColor, botColor] = skyPalettes[stageIdx] || skyPalettes[0];
+
+    const totalPhases = timePhases.length;
+    const rawPhase = (this.currentStair / 50) % totalPhases;
+    const phaseIdx = Math.floor(rawPhase);
+    const nextIdx = (phaseIdx + 1) % totalPhases;
+    // 계단을 오를 때마다 다음 시간대로 조금씩 부드럽게 그라데이션 전이!
+    const blend = rawPhase - phaseIdx;
+
+    const curP = timePhases[phaseIdx];
+    const nxtP = timePhases[nextIdx];
+
+    const skyTop = this.lerpHex(curP.skyTop, nxtP.skyTop, blend);
+    const skyMid = this.lerpHex(curP.skyMid, nxtP.skyMid, blend);
+    const skyBot = this.lerpHex(curP.skyBot, nxtP.skyBot, blend);
+    const mtnFarCol = this.lerpHex(curP.mtnFar, nxtP.mtnFar, blend);
+    const mtnNearCol = this.lerpHex(curP.mtnNear, nxtP.mtnNear, blend);
+    const cityCol = this.lerpHex(curP.cityColor, nxtP.cityColor, blend);
+
+    const sunAlpha = curP.sunAlpha * (1 - blend) + nxtP.sunAlpha * blend;
+    const sunYRatio = curP.sunYRatio * (1 - blend) + nxtP.sunYRatio * blend;
+    const sunCol = this.lerpHex(curP.sunColor, nxtP.sunColor, blend);
+    const moonAlpha = curP.moonAlpha * (1 - blend) + nxtP.moonAlpha * blend;
+    const starAlpha = curP.starAlpha * (1 - blend) + nxtP.starAlpha * blend;
+    const auroraAlpha = curP.auroraAlpha * (1 - blend) + nxtP.auroraAlpha * blend;
+    const windowLit = curP.windowLit * (1 - blend) + nxtP.windowLit * blend;
+
+    // 1) 3단 하늘 그라데이션
     const grad = this.ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, topColor);
-    grad.addColorStop(1, botColor);
+    grad.addColorStop(0, skyTop);
+    grad.addColorStop(0.55, skyMid);
+    grad.addColorStop(1, skyBot);
     this.ctx.fillStyle = grad;
     this.ctx.fillRect(0, 0, w, h);
 
-    // 구름
+    // 2) 밤 & 새벽 반짝이는 별자리 + 별똥별(유성)
+    if (starAlpha > 0.02) {
+      this.ctx.save();
+      this.bgStars.forEach((st) => {
+        const twinkle = 0.35 + 0.65 * Math.abs(Math.sin(this.tick * 0.06 + st.phase));
+        this.ctx.globalAlpha = starAlpha * twinkle;
+        this.ctx.fillStyle = '#ffffff';
+        const sx = st.rx * w;
+        const sy = st.ry * h;
+        this.ctx.beginPath();
+        this.ctx.arc(sx, sy, st.size, 0, Math.PI * 2);
+        this.ctx.fill();
+      });
+
+      // 주기적으로 밤하늘을 가르는 별똥별(Shooting Star)
+      const meteorCycle = (this.tick % 180) / 45;
+      if (meteorCycle < 1.0) {
+        const mx = w * 0.85 - meteorCycle * w * 0.55;
+        const my = h * 0.1 + meteorCycle * h * 0.25;
+        this.ctx.globalAlpha = starAlpha * (1 - meteorCycle);
+        const mGrad = this.ctx.createLinearGradient(mx, my, mx + 55, my - 28);
+        mGrad.addColorStop(0, '#ffffff');
+        mGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+        this.ctx.strokeStyle = mGrad;
+        this.ctx.lineWidth = 2.5;
+        this.ctx.beginPath();
+        this.ctx.moveTo(mx, my);
+        this.ctx.lineTo(mx + 55, my - 28);
+        this.ctx.stroke();
+      }
+      this.ctx.restore();
+    }
+
+    // 3) 새벽녘 신비로운 오로라(Aurora Borealis) 물결
+    if (auroraAlpha > 0.02) {
+      this.ctx.save();
+      this.ctx.globalAlpha = auroraAlpha * 0.45;
+      for (let band = 0; band < 2; band++) {
+        const aGrad = this.ctx.createLinearGradient(0, h * 0.08, w, h * 0.32);
+        aGrad.addColorStop(0, 'rgba(52, 211, 153, 0)');
+        aGrad.addColorStop(0.3, band === 0 ? 'rgba(52, 211, 153, 0.7)' : 'rgba(56, 189, 248, 0.65)');
+        aGrad.addColorStop(0.7, 'rgba(192, 132, 252, 0.65)');
+        aGrad.addColorStop(1, 'rgba(244, 114, 182, 0)');
+        this.ctx.fillStyle = aGrad;
+        this.ctx.beginPath();
+        const baseY = h * (0.14 + band * 0.08);
+        this.ctx.moveTo(0, baseY);
+        for (let x = 0; x <= w; x += 30) {
+          const wave = Math.sin(x * 0.015 + this.tick * 0.04 + band * 2) * 18;
+          this.ctx.lineTo(x, baseY + wave);
+        }
+        this.ctx.lineTo(w, baseY + 55);
+        this.ctx.lineTo(0, baseY + 55);
+        this.ctx.closePath();
+        this.ctx.fill();
+      }
+      this.ctx.restore();
+    }
+
+    // 4) 태양 (아침 일출 -> 한낮 정오 -> 오후 -> 저녁 붉은 석양)
+    if (sunAlpha > 0.02) {
+      this.ctx.save();
+      this.ctx.globalAlpha = sunAlpha;
+      const sunX = w * (0.22 + ((phaseIdx + blend) % 4) * 0.16);
+      const sunY = h * sunYRatio;
+      const sunR = phaseIdx === 3 ? 44 : 32;
+
+      const sHalo = this.ctx.createRadialGradient(sunX, sunY, sunR * 0.3, sunX, sunY, sunR * 2.4);
+      sHalo.addColorStop(0, '#ffffff');
+      sHalo.addColorStop(0.35, sunCol);
+      sHalo.addColorStop(1, 'rgba(251, 146, 60, 0)');
+      this.ctx.fillStyle = sHalo;
+      this.ctx.beginPath();
+      this.ctx.arc(sunX, sunY, sunR * 2.4, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      this.ctx.fillStyle = '#fef9c3';
+      this.ctx.beginPath();
+      this.ctx.arc(sunX, sunY, sunR * 0.75, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.restore();
+    }
+
+    // 5) 초승달 (저녁 -> 밤 -> 새벽)
+    if (moonAlpha > 0.02) {
+      this.ctx.save();
+      this.ctx.globalAlpha = moonAlpha;
+      const moonX = w * 0.78;
+      const moonY = h * 0.2;
+      this.ctx.shadowColor = '#fef08a';
+      this.ctx.shadowBlur = 22;
+      this.ctx.fillStyle = '#fef9c3';
+      this.ctx.beginPath();
+      this.ctx.arc(moonX, moonY, 26, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // 초승달 그림자 컷아웃
+      this.ctx.shadowBlur = 0;
+      this.ctx.fillStyle = skyTop;
+      this.ctx.beginPath();
+      this.ctx.arc(moonX - 10, moonY - 6, 23, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.restore();
+    }
+
+    // 6) 하늘 위 풍경 오브젝트: 열기구(아침/한낮/오후), 천공 풍차섬(오후/저녁), 새떼(낮), 풍등(저녁/밤/새벽)
+    // 6-A) 둥둥 떠다니는 알록달록 열기구 (아침 ~ 오후 구간에 선명하게 등장)
+    if (sunAlpha > 0.25) {
+      this.ctx.save();
+      this.ctx.globalAlpha = Math.min(0.9, sunAlpha);
+      this.bgBalloons.forEach((b, idx) => {
+        const bx = ((b.x - this.camX * 0.12 + this.tick * b.speed) % (w + 160) + (w + 160)) % (w + 160) - 80;
+        const by = ((b.y - this.camY * 0.15 + Math.sin(this.tick * 0.04 + idx) * 8) % (h * 0.65) + h * 0.65) % (h * 0.65) + 60;
+        const r = 18 * b.scale;
+
+        // 열기구 바구니 줄 & 바구니
+        this.ctx.strokeStyle = '#78350f';
+        this.ctx.lineWidth = 1.2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(bx - 5, by + r * 0.8);
+        this.ctx.lineTo(bx - 3, by + r * 1.35);
+        this.ctx.moveTo(bx + 5, by + r * 0.8);
+        this.ctx.lineTo(bx + 3, by + r * 1.35);
+        this.ctx.stroke();
+
+        this.ctx.fillStyle = '#92400e';
+        this.ctx.fillRect(bx - 5, by + r * 1.35, 10, 7);
+
+        // 열기구 풍선 본체
+        this.ctx.fillStyle = b.color1;
+        this.ctx.beginPath();
+        this.ctx.arc(bx, by, r, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // 열기구 세로 줄무늬
+        this.ctx.fillStyle = b.color2;
+        this.ctx.beginPath();
+        this.ctx.ellipse(bx, by, r * 0.48, r, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+      });
+      this.ctx.restore();
+    }
+
+    // 6-B) 하늘을 날아가는 새떼 (아침 / 오후 / 저녁 노을)
+    if (phaseIdx === 0 || phaseIdx === 2 || phaseIdx === 3) {
+      this.ctx.save();
+      this.ctx.strokeStyle = phaseIdx === 3 ? '#1e1b4b' : '#334155';
+      this.ctx.lineWidth = 2;
+      const flockBaseX = ((this.tick * 0.9 - this.camX * 0.15) % (w + 220) + (w + 220)) % (w + 220) - 110;
+      const flockBaseY = h * 0.26 + Math.sin(this.tick * 0.02) * 20;
+      this.bgBirds.forEach((bd) => {
+        const bx = flockBaseX - bd.offsetX;
+        const by = flockBaseY + bd.offsetY;
+        const wingY = Math.sin(this.tick * 0.22 + bd.flapPhase) * 5;
+        this.ctx.beginPath();
+        this.ctx.moveTo(bx - 7, by - wingY);
+        this.ctx.quadraticCurveTo(bx - 3, by - 4, bx, by);
+        this.ctx.quadraticCurveTo(bx + 3, by - 4, bx + 7, by - wingY);
+        this.ctx.stroke();
+      });
+      this.ctx.restore();
+    }
+
+    // 6-C) 밤과 새벽 하늘로 떠오르는 소원 풍등(Sky Lanterns)
+    if (moonAlpha > 0.2) {
+      this.ctx.save();
+      this.ctx.globalAlpha = Math.min(0.95, moonAlpha);
+      for (let i = 0; i < 6; i++) {
+        const lx = ((i * 95 + 40 - this.camX * 0.15 + Math.sin(this.tick * 0.03 + i) * 14) % (w + 80) + (w + 80)) % (w + 80) - 40;
+        const ly = ((i * 120 - this.tick * 0.45 - this.camY * 0.18) % (h * 0.75) + h * 0.75) % (h * 0.75) + 40;
+        this.ctx.shadowColor = '#f97316';
+        this.ctx.shadowBlur = 14;
+        this.ctx.fillStyle = '#fb923c';
+        this.ctx.beginPath();
+        this.ctx.roundRect(lx - 6, ly - 8, 12, 15, 4);
+        this.ctx.fill();
+        this.ctx.fillStyle = '#fef08a';
+        this.ctx.beginPath();
+        this.ctx.arc(lx, ly + 2, 3.5, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+      this.ctx.restore();
+    }
+
+    // 7) 구름 (시간대에 따라 색상이 자연스럽게 물듦)
     this.ctx.save();
-    this.ctx.fillStyle = stageIdx >= 5 ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.65)';
+    this.ctx.fillStyle = curP.cloudColor;
     this.clouds.forEach((c) => {
-      const screenX = ((c.x - this.camX * 0.25 + this.tick * 0.2) % (w + 240) + (w + 240)) % (w + 240) - 120;
-      const screenY = ((c.y - this.camY * 0.25) % (h + 200) + (h + 200)) % (h + 200) - 100;
+      const screenX = ((c.x - this.camX * 0.22 + this.tick * 0.22) % (w + 240) + (w + 240)) % (w + 240) - 120;
+      const screenY = ((c.y - this.camY * 0.22) % (h + 200) + (h + 200)) % (h + 200) - 100;
       this.ctx.beginPath();
       this.ctx.arc(screenX, screenY, 26 * c.scale, 0, Math.PI * 2);
       this.ctx.arc(screenX + 22 * c.scale, screenY - 6 * c.scale, 20 * c.scale, 0, Math.PI * 2);
       this.ctx.arc(screenX - 20 * c.scale, screenY + 2 * c.scale, 18 * c.scale, 0, Math.PI * 2);
       this.ctx.fill();
     });
+    this.ctx.restore();
+
+    // 8) 하단 패럴랙스 원경 산맥 & 도시 스카이라인 / 대관람차 풍경 (하늘만 보이지 않도록 풍부한 지상/원경 레이어 구성!)
+    const horizonShift = Math.min(140, Math.max(-40, this.camY * 0.04));
+    const baseHorizonY = h - 90 + (horizonShift % 50);
+
+    // 8-A) 먼 산맥 실루엣
+    this.ctx.save();
+    this.ctx.fillStyle = mtnFarCol;
+    this.ctx.globalAlpha = 0.55;
+    this.ctx.beginPath();
+    this.ctx.moveTo(0, h);
+    for (let x = -60; x <= w + 60; x += 60) {
+      const worldOffset = x + ((this.camX * 0.06) % 120);
+      const peakH = 85 + Math.sin(worldOffset * 0.018) * 38 + Math.cos(worldOffset * 0.035) * 22;
+      this.ctx.lineTo(x, baseHorizonY - peakH);
+    }
+    this.ctx.lineTo(w, h);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    // 8-B) 가까운 능선 실루엣
+    this.ctx.fillStyle = mtnNearCol;
+    this.ctx.globalAlpha = 0.72;
+    this.ctx.beginPath();
+    this.ctx.moveTo(0, h);
+    for (let x = -50; x <= w + 50; x += 50) {
+      const worldOffset = x + ((this.camX * 0.12) % 100);
+      const peakH = 45 + Math.cos(worldOffset * 0.025) * 26;
+      this.ctx.lineTo(x, baseHorizonY - peakH + 18);
+    }
+    this.ctx.lineTo(w, h);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    // 8-C) 회전하는 랜드마크 대관람차(Ferris Wheel) & 도시 빌딩 숲 실루엣
+    this.ctx.globalAlpha = 0.85;
+    const wheelX = ((w * 0.76 - this.camX * 0.14) % (w + 180) + (w + 180)) % (w + 180) - 90;
+    const wheelY = baseHorizonY - 58;
+    const wheelR = 36;
+
+    // 관람차 지지대
+    this.ctx.strokeStyle = cityCol;
+    this.ctx.lineWidth = 3;
+    this.ctx.beginPath();
+    this.ctx.moveTo(wheelX - 18, baseHorizonY + 20);
+    this.ctx.lineTo(wheelX, wheelY);
+    this.ctx.lineTo(wheelX + 18, baseHorizonY + 20);
+    this.ctx.stroke();
+
+    // 관람차 원형 림 & 회전 스포크
+    this.ctx.strokeStyle = windowLit > 0.3 ? '#38bdf8' : cityCol;
+    this.ctx.lineWidth = 2.2;
+    this.ctx.beginPath();
+    this.ctx.arc(wheelX, wheelY, wheelR, 0, Math.PI * 2);
+    this.ctx.stroke();
+
+    for (let s = 0; s < 8; s++) {
+      const ang = this.tick * 0.012 + (s * Math.PI) / 4;
+      const gx = wheelX + Math.cos(ang) * wheelR;
+      const gy = wheelY + Math.sin(ang) * wheelR;
+      this.ctx.strokeStyle = cityCol;
+      this.ctx.lineWidth = 1.2;
+      this.ctx.beginPath();
+      this.ctx.moveTo(wheelX, wheelY);
+      this.ctx.lineTo(gx, gy);
+      this.ctx.stroke();
+
+      // 관람차 곤돌라 (저녁/밤에는 네온 불빛 점등!)
+      this.ctx.fillStyle = windowLit > 0.3 ? (s % 2 === 0 ? '#fde047' : '#f472b6') : cityCol;
+      this.ctx.beginPath();
+      this.ctx.arc(gx, gy, 3.5, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+
+    // 스카이라인 빌딩과 저녁/밤에 켜지는 창문 불빛
+    let bxCursor = -((this.camX * 0.16) % 520) - 60;
+    while (bxCursor < w + 60) {
+      this.cityBuildings.forEach((b, bIdx) => {
+        const bx = bxCursor;
+        const by = baseHorizonY - b.h + 28;
+        if (bx + b.w > -20 && bx < w + 20) {
+          this.ctx.fillStyle = cityCol;
+          this.ctx.fillRect(bx, by, b.w, b.h + 100);
+
+          if (b.hasSpire) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(bx + b.w * 0.2, by);
+            this.ctx.lineTo(bx + b.w * 0.5, by - 18);
+            this.ctx.lineTo(bx + b.w * 0.8, by);
+            this.ctx.closePath();
+            this.ctx.fill();
+          }
+
+          // 저녁 노을 ~ 밤 ~ 새벽에 켜지는 빌딩 창문 야경!
+          if (windowLit > 0.08) {
+            this.ctx.fillStyle = `rgba(254, 240, 138, ${windowLit * 0.85})`;
+            for (let wy = by + 8; wy < baseHorizonY + 8; wy += 12) {
+              for (let wx = bx + 6; wx < bx + b.w - 8; wx += 9) {
+                if ((wx + wy + bIdx) % 3 !== 0) {
+                  this.ctx.fillRect(wx, wy, 4, 6);
+                }
+              }
+            }
+          }
+        }
+        bxCursor += b.w - 2;
+      });
+    }
+    this.ctx.restore();
+
+    // 9) 우측 상단(HUD 아래) 현재 시간대 배지 표시 (50계단마다 전환)
+    this.ctx.save();
+    const badgeText = `${curP.name} (${Math.floor(this.currentStair / 50) * 50}~${Math.floor(this.currentStair / 50) * 50 + 49}계단)`;
+    this.ctx.font = 'bold 11px "Noto Sans KR", sans-serif';
+    const textW = this.ctx.measureText(badgeText).width;
+    const bx = w - textW - 26;
+    const by = 106;
+    this.ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    this.ctx.lineWidth = 1.5;
+    this.ctx.beginPath();
+    this.ctx.roundRect(bx, by, textW + 14, 24, 12);
+    this.ctx.fill();
+    this.ctx.stroke();
+    this.ctx.fillStyle = '#fef08a';
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText(badgeText, bx + 7, by + 12);
     this.ctx.restore();
 
     // 고속 질주(speedCombo >= 4) 시 화면 좌우 익사이팅 스피드 라인 효과!
@@ -2796,32 +4144,148 @@ class InfiniteMathStairsGame {
       }
     }
 
-    // 무지개신발 지나온 무지개 자국 렌더링 (오래된 자국부터 자연스럽게 투명해지며 사라짐)
+    // 무지개신발 지나온 무지개 자국 렌더링 (네온 프리즘 계단 코팅 & 무지개 아치)
     this.rainbowTrails.forEach((rt) => {
       this.ctx.save();
       this.ctx.globalAlpha = Math.max(0, rt.alpha);
       const rGrad = this.ctx.createLinearGradient(rt.x - 28, rt.y, rt.x + 28, rt.y);
       rGrad.addColorStop(0, '#ef4444');
-      rGrad.addColorStop(0.2, '#f59e0b');
-      rGrad.addColorStop(0.4, '#eab308');
-      rGrad.addColorStop(0.6, '#22c55e');
-      rGrad.addColorStop(0.8, '#3b82f6');
-      rGrad.addColorStop(1, '#a855f7');
+      rGrad.addColorStop(0.18, '#f97316');
+      rGrad.addColorStop(0.36, '#fde047');
+      rGrad.addColorStop(0.54, '#22c55e');
+      rGrad.addColorStop(0.72, '#38bdf8');
+      rGrad.addColorStop(0.88, '#6366f1');
+      rGrad.addColorStop(1, '#d946ef');
+
       this.ctx.fillStyle = rGrad;
-      this.ctx.shadowColor = `hsl(${rt.hue}, 95%, 60%)`;
-      this.ctx.shadowBlur = 10;
+      this.ctx.shadowColor = `hsl(${rt.hue}, 95%, 62%)`;
+      this.ctx.shadowBlur = 16;
       this.ctx.beginPath();
-      this.ctx.roundRect(rt.x - 27, rt.y - 2, 54, 8, 4);
+      this.ctx.roundRect(rt.x - 28, rt.y - 3, 56, 12, 5);
       this.ctx.fill();
+
+      // 계단 위 영롱한 반투명 무지개 아치 홀로그램
+      this.ctx.strokeStyle = rGrad;
+      this.ctx.lineWidth = 3;
+      this.ctx.beginPath();
+      this.ctx.arc(rt.x, rt.y, 24, Math.PI, 0);
+      this.ctx.stroke();
       this.ctx.restore();
     });
 
-    // 방향전환 쇼크웨이브 링 렌더링
+    // 계단 위 원소/초신성 기둥 & 회오리 & 낙뢰 이펙트 렌더링
+    this.stairEffects.forEach((se) => {
+      this.ctx.save();
+      this.ctx.globalAlpha = Math.max(0, se.alpha);
+
+      if (se.type === 'wind_vortex') {
+        // 에메랄드 폭풍 토네이도 기둥 (계단에서 위로 소용돌이치며 솟구치는 4단 바람 링)
+        this.ctx.shadowColor = '#22d3ee';
+        this.ctx.shadowBlur = 16;
+        for (let ring = 0; ring < 4; ring++) {
+          const ry = se.y - ring * 13 - se.progress * 14;
+          const rw = 16 + ring * 5 + Math.sin(this.tick * 0.3 + ring) * 3;
+          this.ctx.strokeStyle = ring % 2 === 0 ? '#22d3ee' : '#6ee7b7';
+          this.ctx.lineWidth = 3 - ring * 0.35;
+          this.ctx.beginPath();
+          const startAng = this.tick * 0.28 + ring * 1.2;
+          this.ctx.ellipse(se.x, ry, rw, 5.5, 0, startAng, startAng + Math.PI * 1.45);
+          this.ctx.stroke();
+        }
+      } else if (se.type === 'fire_pillar') {
+        // 치솟는 마그마 화염 불기둥 (계단 전체를 감싸며 솟구치는 3중 불길)
+        const pillarH = 55 + Math.sin(se.progress * 4) * 18;
+        const fGrad = this.ctx.createLinearGradient(se.x, se.y + 4, se.x, se.y - pillarH);
+        fGrad.addColorStop(0, 'rgba(254, 240, 138, 0.95)');
+        fGrad.addColorStop(0.4, 'rgba(249, 115, 22, 0.85)');
+        fGrad.addColorStop(0.8, 'rgba(239, 68, 68, 0.55)');
+        fGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+
+        this.ctx.fillStyle = fGrad;
+        this.ctx.shadowColor = '#f97316';
+        this.ctx.shadowBlur = 20;
+        this.ctx.beginPath();
+        this.ctx.moveTo(se.x - 24, se.y + 4);
+        this.ctx.quadraticCurveTo(se.x - 28, se.y - pillarH * 0.5, se.x - 10, se.y - pillarH);
+        this.ctx.lineTo(se.x, se.y - pillarH * 1.15);
+        this.ctx.lineTo(se.x + 10, se.y - pillarH);
+        this.ctx.quadraticCurveTo(se.x + 28, se.y - pillarH * 0.5, se.x + 24, se.y + 4);
+        this.ctx.closePath();
+        this.ctx.fill();
+      } else if (se.type === 'lightning_strike') {
+        // 하늘에서 계단으로 내리꽂히는 거대한 지그재그 천둥 낙뢰!
+        this.ctx.shadowColor = '#facc15';
+        this.ctx.shadowBlur = 22;
+
+        // 외곽 네온 블루/골드 전격 광선
+        this.ctx.strokeStyle = '#38bdf8';
+        this.ctx.lineWidth = 6;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+        this.ctx.beginPath();
+        se.segments.forEach((seg, idx) => {
+          if (idx === 0) this.ctx.moveTo(seg.x1, seg.y1);
+          this.ctx.lineTo(seg.x2 + (Math.random() - 0.5) * 4, seg.y2);
+        });
+        this.ctx.stroke();
+
+        // 코어 화이트-옐로우 고전압 번개
+        this.ctx.strokeStyle = '#fef08a';
+        this.ctx.lineWidth = 2.6;
+        this.ctx.stroke();
+
+        // 낙뢰 타격 지점 섬광 구
+        const flashGrad = this.ctx.createRadialGradient(se.x, se.y, 2, se.x, se.y, 26);
+        flashGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        flashGrad.addColorStop(0.5, 'rgba(250, 204, 21, 0.7)');
+        flashGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+        this.ctx.fillStyle = flashGrad;
+        this.ctx.beginPath();
+        this.ctx.arc(se.x, se.y, 26, 0, Math.PI * 2);
+        this.ctx.fill();
+      } else if (se.type === 'rainbow_burst') {
+        // 프리즘 스타라이트 광선 기둥
+        const pGrad = this.ctx.createLinearGradient(se.x, se.y + 4, se.x, se.y - 75);
+        pGrad.addColorStop(0, `hsla(${se.hue}, 95%, 65%, 0.8)`);
+        pGrad.addColorStop(0.5, `hsla(${(se.hue + 120) % 360}, 95%, 65%, 0.45)`);
+        pGrad.addColorStop(1, `hsla(${(se.hue + 240) % 360}, 95%, 65%, 0)`);
+        this.ctx.fillStyle = pGrad;
+        this.ctx.beginPath();
+        this.ctx.fillRect(se.x - 24, se.y - 75, 48, 79);
+      } else if (se.type === 'crown_supernova') {
+        // 초신성 네온 왕관: 천상의 초신성 빛기둥(Supernova Beam) & 회전하는 8각 마법진!
+        const beamGrad = this.ctx.createLinearGradient(se.x, se.y + 6, se.x, se.y - 115);
+        beamGrad.addColorStop(0, 'rgba(56, 189, 248, 0.85)');
+        beamGrad.addColorStop(0.4, 'rgba(244, 114, 182, 0.55)');
+        beamGrad.addColorStop(0.75, 'rgba(253, 224, 71, 0.35)');
+        beamGrad.addColorStop(1, 'rgba(253, 224, 71, 0)');
+
+        this.ctx.fillStyle = beamGrad;
+        this.ctx.shadowColor = '#38bdf8';
+        this.ctx.shadowBlur = 20;
+        this.ctx.fillRect(se.x - 22, se.y - 115, 44, 120);
+
+        // 중심 코어 화이트-골드 레이저 빔
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        this.ctx.fillRect(se.x - 6, se.y - 115, 12, 120);
+
+        // 계단 바닥의 초신성 8각 별빛 마법진
+        drawStar4(this.ctx, se.x, se.y + 2, 26 + se.progress * 10, 8, '#fde047', '#38bdf8', se.progress * 1.5);
+      }
+
+      this.ctx.restore();
+    });
+
+    // 스텝 & 방향전환 쇼크웨이브 링 렌더링 (네온 발광 포함)
     this.shockwaves.forEach((sw) => {
       this.ctx.save();
       this.ctx.globalAlpha = Math.max(0, sw.alpha);
       this.ctx.strokeStyle = sw.color;
-      this.ctx.lineWidth = 3.5;
+      this.ctx.lineWidth = sw.lineWidth || 3.5;
+      if (sw.glow) {
+        this.ctx.shadowColor = sw.glow;
+        this.ctx.shadowBlur = 14;
+      }
       this.ctx.beginPath();
       this.ctx.ellipse(sw.x, sw.y, sw.radius, sw.radius * 0.45, 0, 0, Math.PI * 2);
       this.ctx.stroke();
@@ -2869,17 +4333,90 @@ class InfiniteMathStairsGame {
       1
     );
 
-    // 파티클 렌더링 (바람, 불, 번개, 무지개)
+    // 고품격 커스텀 파티클 렌더링 (초신성 별빛, 보석, 칼바람, 화염, 번개, 황금깃털)
     this.particles.forEach((p) => {
       this.ctx.save();
       this.ctx.globalAlpha = Math.max(0, p.alpha);
+      if (p.glow) {
+        this.ctx.shadowColor = p.glow;
+        this.ctx.shadowBlur = 12;
+      }
       this.ctx.fillStyle = p.color;
-      if (p.type === 'spark') {
-        this.ctx.strokeStyle = p.color;
-        this.ctx.lineWidth = 2;
+      this.ctx.strokeStyle = p.color;
+
+      if (p.type === 'star4') {
+        drawStar4(this.ctx, p.x, p.y, p.size, p.size * 0.32, p.color, p.glow, p.rot || 0);
+      } else if (p.type === 'star5') {
+        drawStar5(this.ctx, p.x, p.y, p.size, p.size * 0.42, p.color, p.glow, p.rot || 0);
+      } else if (p.type === 'crown_gem') {
+        this.ctx.translate(p.x, p.y);
+        if (p.rot) this.ctx.rotate(p.rot);
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, -p.size);
+        this.ctx.lineTo(p.size * 0.65, 0);
+        this.ctx.lineTo(0, p.size);
+        this.ctx.lineTo(-p.size * 0.65, 0);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 1;
+        this.ctx.stroke();
+      } else if (p.type === 'wind_blade') {
+        this.ctx.translate(p.x, p.y);
+        if (p.rot) this.ctx.rotate(p.rot);
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, p.size, -Math.PI * 0.45, Math.PI * 0.45, false);
+        this.ctx.arc(-p.size * 0.35, 0, p.size * 0.85, Math.PI * 0.4, -Math.PI * 0.4, true);
+        this.ctx.closePath();
+        this.ctx.fill();
+      } else if (p.type === 'wind_swirl') {
+        this.ctx.lineWidth = 2.4;
+        this.ctx.beginPath();
+        this.ctx.arc(p.x, p.y, p.size, p.rot || 0, (p.rot || 0) + Math.PI * 1.25);
+        this.ctx.stroke();
+      } else if (p.type === 'flame') {
+        this.ctx.translate(p.x, p.y);
+        if (p.rot) this.ctx.rotate(p.rot);
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, -p.size * 1.3);
+        this.ctx.quadraticCurveTo(p.size * 0.8, -p.size * 0.2, p.size * 0.55, p.size * 0.6);
+        this.ctx.arc(0, p.size * 0.55, p.size * 0.55, 0, Math.PI, false);
+        this.ctx.quadraticCurveTo(-p.size * 0.8, -p.size * 0.2, 0, -p.size * 1.3);
+        this.ctx.closePath();
+        this.ctx.fill();
+        // 화염 내부 코어
+        this.ctx.fillStyle = '#fef08a';
+        this.ctx.beginPath();
+        this.ctx.arc(0, p.size * 0.35, p.size * 0.28, 0, Math.PI * 2);
+        this.ctx.fill();
+      } else if (p.type === 'lightning_bolt') {
+        this.ctx.translate(p.x, p.y);
+        if (p.rot) this.ctx.rotate(p.rot);
+        this.ctx.lineWidth = 2.4;
+        this.ctx.lineCap = 'round';
+        this.ctx.beginPath();
+        this.ctx.moveTo(-p.size, -p.size * 0.6);
+        this.ctx.lineTo(-p.size * 0.2, 0);
+        this.ctx.lineTo(p.size * 0.2, -p.size * 0.4);
+        this.ctx.lineTo(p.size, p.size * 0.6);
+        this.ctx.stroke();
+      } else if (p.type === 'feather') {
+        this.ctx.translate(p.x, p.y);
+        if (p.rot) this.ctx.rotate(p.rot);
+        this.ctx.beginPath();
+        this.ctx.ellipse(0, 0, p.size, p.size * 0.4, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.strokeStyle = '#ca8a04';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.moveTo(-p.size, 0);
+        this.ctx.lineTo(p.size, 0);
+        this.ctx.stroke();
+      } else if (p.type === 'spark') {
+        this.ctx.lineWidth = 2.4;
         this.ctx.beginPath();
         this.ctx.moveTo(p.x, p.y);
-        this.ctx.lineTo(p.x - p.vx * 2, p.y - p.vy * 2);
+        this.ctx.lineTo(p.x - p.vx * 2.2, p.y - p.vy * 2.2);
         this.ctx.stroke();
       } else {
         this.ctx.beginPath();
